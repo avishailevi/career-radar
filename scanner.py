@@ -76,6 +76,7 @@ BAD_URL_PARTS = [
 
 
 DETAIL_TEXT_PLATFORMS = {
+    "apple",
     "microsoft",
     "workday",
 }
@@ -171,6 +172,10 @@ def get_job_card_text(page_text: str, title: str) -> str:
 
 def should_read_detail_pages(company: dict) -> bool:
     return company.get("platform") in DETAIL_TEXT_PLATFORMS
+
+
+def should_follow_job_list_link(company: dict) -> bool:
+    return company.get("platform") != "apple"
 
 
 def get_job_detail_text(context, url: str) -> str:
@@ -289,7 +294,8 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
         page.wait_for_timeout(5000)
 
-        followed_link_text = try_follow_job_list_link(page)
+        if should_follow_job_list_link(company):
+            followed_link_text = try_follow_job_list_link(page)
 
         page_url = page.url
 
