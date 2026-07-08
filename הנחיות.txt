@@ -54,9 +54,11 @@ Matched location, אם זמין
 
 הפרויקט כבר עבר ל-GitHub.
 main.py מריץ סריקה לכל החברות או לחברה אחת לפי ארגומנט.
-ScannerFactory בוחר סורק לפי platform.
+main.py מציג Company, Title, Matched keyword, Matched location ו-URL.
+ScannerFactory בוחר סורק לפי platform מתוך mapping מפורש.
 scanner.py הוא עדיין מנוע הסריקה המרכזי בפועל.
-WorkdayScanner קיים אך כרגע עוטף את scan_company.
+יש מחלקות סורק מפורשות לפלטפורמות המרכזיות: Workday, Apple, Microsoft, Google, Amazon ו-Generic.
+רוב מחלקות הסורק עדיין עוטפות את scan_company, אבל הן מאפשרות לפתח לוגיקה ייעודית לכל פלטפורמה בלי לשנות את main.py.
 DEBUG=True כרגע כדי להבין למה חברות לא מחזירות תוצאות.
 
 השלב הנוכחי הוא לא להוסיף פיצ׳רים חדשים, אלא לייצב כיסוי אמיתי של חברות ופלטפורמות.
@@ -67,74 +69,70 @@ DEBUG=True כרגע כדי להבין למה חברות לא מחזירות תו
 
 Status values:
 
-✅ Supported – הסורק נכנס לדפי משרות אמיתיים, קורא תוכן, ומחזיר משרות רלוונטיות.
-🟡 Partial – הסורק מוצא קישורים או חלק מהמידע, אבל הכניסה/החילוץ/הסינון עדיין לא אמינים.
-❌ Unsupported – אין עדיין תמיכה אמינה או שנדרש סורק ייעודי.
+Supported – הסורק נכנס לדפי משרות אמיתיים, קורא תוכן, ומחזיר משרות רלוונטיות.
+Partial – הסורק מוצא קישורים או חלק מהמידע, אבל הכניסה/החילוץ/הסינון עדיין לא אמינים.
+Unsupported – אין עדיין תמיכה אמינה או שנדרש סורק ייעודי.
 
 Current matrix:
 
-NVIDIA – ✅ Supported – Workday / worked in previous runs.
-Apple – ✅ Supported – Apple careers / worked in previous runs.
-Broadcom – 🟡 Partial – needs real job page verification.
-Intel – ✅ Supported – treated previously; re-test during regression.
-Microsoft – ✅ Supported – treated previously; re-test during regression.
-Google – 🟡 Partial – needs real job page verification.
-Amazon – 🟡 Partial – needs real job page verification.
-Qualcomm – 🟡 Partial – needs real job page verification.
-Marvell – 🟡 Partial – needs real job page verification.
-Cadence – 🟡 Partial – needs real job page verification.
-Synopsys – 🟡 Partial – needs real job page verification.
-Tower Semiconductor – 🟡 Partial – needs real job page verification.
-Mobileye – 🟡 Partial – needs real job page verification.
-Nuvoton – 🟡 Partial – needs real job page verification.
-Applied Materials – 🟡 Partial – needs real job page verification.
-KLA – 🟡 Partial – needs real job page verification.
-Nova – 🟡 Partial – needs real job page verification.
-SolarEdge – 🟡 Partial – needs real job page verification.
-Rafael – 🟡 Partial – needs real job page verification.
-IAI – 🟡 Partial – needs real job page verification.
-Elbit – 🟡 Partial – needs real job page verification.
+NVIDIA – Supported – Workday / worked in previous runs.
+Apple – Supported – Apple careers / worked in previous runs.
+Broadcom – Partial – needs real job page verification.
+Intel – Supported – treated previously; re-test during regression.
+Microsoft – Supported – treated previously; re-test during regression.
+Google – Partial – has explicit GoogleScanner wrapper; needs real job page verification.
+Amazon – Partial – has explicit AmazonScanner wrapper; needs real job page verification.
+Qualcomm – Partial – uses GenericScanner; needs real job page verification.
+Marvell – Partial – Workday / needs real job page verification.
+Cadence – Partial – uses GenericScanner; needs real job page verification.
+Synopsys – Partial – uses GenericScanner; needs real job page verification.
+Tower Semiconductor – Partial – uses GenericScanner; needs real job page verification.
+Mobileye – Partial – uses GenericScanner; needs real job page verification.
+Nuvoton – Partial – uses GenericScanner; needs real job page verification.
+Applied Materials – Partial – uses GenericScanner; needs real job page verification.
+KLA – Partial – uses GenericScanner; needs real job page verification.
+Nova – Partial – uses GenericScanner; needs real job page verification.
+SolarEdge – Partial – uses GenericScanner; needs real job page verification.
+Rafael – Partial – uses GenericScanner; needs real job page verification.
+IAI – Partial – uses GenericScanner; needs real job page verification.
+Elbit – Partial – uses GenericScanner; needs real job page verification.
 
 Current next step
 
-להמשיך חברה-חברה לפי המטריצה, ולהעביר חברות מ-🟡 ל-✅ רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
+להמשיך חברה-חברה לפי המטריצה, ולהעביר חברות מ-Partial ל-Supported רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
 
 עדיפות עבודה:
 
-1. לוודא שהפלט של המערכת כולל גם matched location כאשר נמצא.
-2. להריץ regression על חברות שכבר נחשבות נתמכות: NVIDIA, Apple, Intel, Microsoft.
-3. לבחור את החברה הבאה במצב 🟡 ולטפל בה.
-4. אם הבעיה שייכת לפלטפורמה שלמה, לפתור ברמת הפלטפורמה ולא ברמת החברה.
+1. להריץ regression על חברות שכבר נחשבות נתמכות: NVIDIA, Apple, Intel, Microsoft.
+2. לבחור את החברה הבאה במצב Partial ולטפל בה.
+3. אם הבעיה שייכת לפלטפורמה שלמה, לפתור ברמת הפלטפורמה ולא ברמת החברה.
+4. להוסיף לוגיקה ייעודית בתוך מחלקת הסורק המתאימה, ולא בתוך main.py.
 5. לעדכן את המטריצה במסמך אחרי כל חברה שמסתיימת.
 
 ארכיטקטורה נוכחית
 
 main.py
-    ↓
-ScannerFactory
-    ↓
-Scanner לפי platform
-    ↓
-Playwright
-    ↓
-חילוץ קישורים ודפי משרה
-    ↓
-Keyword + Location Filter
-    ↓
-Relevant Jobs
+    -> ScannerFactory
+    -> Scanner לפי platform
+    -> Playwright
+    -> חילוץ קישורים ודפי משרה
+    -> Keyword + Location Filter
+    -> Relevant Jobs
 
 פלטפורמות
 
 Workday – בשימוש אצל NVIDIA, Intel, Broadcom, Marvell ועוד. רצוי לפתור בעיות ברמת WorkdayScanner.
-Apple – Apple careers.
-Microsoft – Microsoft R&D Israel careers.
+Apple – Apple careers. יש AppleScanner מפורש.
+Microsoft – Microsoft R&D Israel careers. יש MicrosoftScanner מפורש.
+Google – Google careers. יש GoogleScanner מפורש.
+Amazon – Amazon jobs. יש AmazonScanner מפורש.
 Generic / Custom – ברירת מחדל לחברות שאין להן עדיין סורק ייעודי.
 
 בעתיד ייתכן שיהיה צורך להוסיף סורקים ייעודיים לפלטפורמות כמו Greenhouse, Lever, SAP SuccessFactors, Oracle, SmartRecruiters.
 
 Definition of Done לחברה
 
-חברה נחשבת ✅ רק אם:
+חברה נחשבת Supported רק אם:
 
 הסורק פותח את אתר הקריירה שלה.
 הסורק מגיע לדף משרה אמיתי.
@@ -164,7 +162,7 @@ Definition of Success ל-v0.1
 
 v0.1 תיחשב יציבה כאשר:
 
-כל החברות המרכזיות ברשימה הן ✅ או שיש סיבה מתועדת וברורה למה לא.
+כל החברות המרכזיות ברשימה הן Supported או שיש סיבה מתועדת וברורה למה לא.
 אין קריסות בהרצה מלאה.
 כל משרה שמוחזרת מגיעה מדף משרה אמיתי.
 אין False Positives ידועים.
@@ -230,3 +228,5 @@ Change Log
 - מטרת הפרויקט עודכנה לכיסוי מלא וכניסה אמיתית לדפי משרות.
 - נוספה מטריצת סטטוס חברות.
 - נוספו Definition of Done, Regression checklist ו-Roadmap.
+- ScannerFactory עודכן לעבוד עם mapping מפורש לפי פלטפורמה.
+- נוספו סורקים מפורשים ל-Generic, Apple, Microsoft, Google ו-Amazon.
