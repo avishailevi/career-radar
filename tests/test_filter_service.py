@@ -3,6 +3,7 @@ import unittest
 from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_url
 from services.filter_service import is_identifier_title
+from services.filter_service import is_job_list_url
 from services.filter_service import is_job_url
 
 
@@ -48,6 +49,29 @@ class FilterServiceTest(unittest.TestCase):
         url = "https://nuvoton.co.il/careers/co/architecture/all"
 
         self.assertFalse(is_job_url(url))
+
+    def test_workday_job_detail_url_is_job_url(self):
+        url = (
+            "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/"
+            "job/Israel-Tel-Aviv/Senior-Physical-Design-Engineer_JR1999999"
+        )
+
+        self.assertTrue(is_job_url(url))
+
+    def test_workday_listing_url_is_not_job_url(self):
+        url = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
+
+        self.assertFalse(is_job_url(url))
+
+    def test_workday_listing_url_is_job_list_url(self):
+        url = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
+
+        self.assertTrue(is_job_list_url(url))
+
+    def test_company_home_page_is_not_job_list_url(self):
+        url = "https://www.marvell.com/company/careers.html"
+
+        self.assertFalse(is_job_list_url(url))
 
     def test_title_from_google_job_url_removes_numeric_id(self):
         url = (

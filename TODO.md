@@ -2,13 +2,14 @@
 
 ## Current Priority
 
-- Stabilize scanner behavior while keeping the platform-based structure small.
+- Review remaining red/yellow company statuses after completing the ScannerFactory Workday milestone.
 
 ## Next Tasks
 
 - Validate syntax and imports after each change.
 - Keep `main.py` stable.
-- Review Workday-like company live behavior next.
+- Review non-Workday yellow statuses next.
+- Review red company statuses where access is not blocked by site protections.
 
 ## Validation
 
@@ -18,6 +19,5 @@
 
 ## Known Follow-Up Work
 
-- Stabilize Workday-like companies.
 - Review red/yellow company statuses in `docs/COMPANIES.md`.
 - Keep documentation aligned with the code after each small refactor.

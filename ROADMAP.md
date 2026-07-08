@@ -31,19 +31,25 @@ Already present:
 - Workday wrapper that currently delegates to the shared scanner implementation.
 - Generic scanner wrapper that delegates to the shared scanner implementation.
 - Filtering service extracted from `scanner.py`.
+- Separate URL checks for job detail pages and Workday job listing pages.
 - Platform behavior rules extracted from `scanner.py`.
 - Documentation under `docs/`.
 
 Known working companies from `docs/COMPANIES.md`:
 - NVIDIA.
 - Apple.
+- Broadcom.
 - Intel.
 - Microsoft.
 - Google.
+- Marvell.
+
+Completed milestone:
+- ScannerFactory routes Workday companies through `WorkdayScanner`.
+- Workday-like companies keep landing-page navigation stable.
+- Workday listing URLs are followed without being counted as job detail pages.
 
 Highest-priority next work:
-- Keep Workday behavior stable while preparing for platform-specific scanner logic.
-- Stabilize Workday-like companies.
 - Review remaining red/yellow company statuses.
 
 ## Later

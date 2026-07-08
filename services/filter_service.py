@@ -30,7 +30,6 @@ JOB_URL_HINTS = [
     "job-",
     "jobdetails?jobseqno",
     "jobs/results/",
-    "workdayjobs.com",
 ]
 
 
@@ -99,6 +98,9 @@ def is_job_url(url: str) -> bool:
     url_lower = url.lower()
     parsed_url = urlparse(url_lower)
 
+    if parsed_url.netloc.endswith("workdayjobs.com"):
+        return "/job/" in parsed_url.path
+
     if "/about/careers/applications/jobs/results/" in parsed_url.path:
         return not parsed_url.path.rstrip("/").endswith("/jobs/results")
 
@@ -111,6 +113,12 @@ def is_job_url(url: str) -> bool:
         return len(path_parts) >= 6
 
     return any(hint in url_lower for hint in JOB_URL_HINTS)
+
+
+def is_job_list_url(url: str) -> bool:
+    parsed_url = urlparse(url.lower())
+
+    return parsed_url.netloc.endswith("workdayjobs.com")
 
 
 def is_possible_job_link(title: str, url: str) -> bool:

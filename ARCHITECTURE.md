@@ -54,6 +54,7 @@ Responsibilities:
 - Filter bad titles.
 - Filter bad URLs.
 - Detect job-like URLs.
+- Detect job-list URLs that should be followed from career landing pages.
 - Match target locations.
 - Match target keywords.
 - Build duplicate-detection keys.
@@ -73,6 +74,7 @@ Routes companies by platform.
 Current behavior:
 - `workday` companies use `WorkdayScanner`.
 - Other companies use `GenericScanner`.
+- Workday listing URLs can be followed without being treated as job detail URLs.
 
 ### `scanners/workday_scanner.py`
 

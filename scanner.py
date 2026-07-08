@@ -11,6 +11,7 @@ from services.filter_service import get_title_from_url
 from services.filter_service import is_identifier_title
 from services.filter_service import is_bad_title
 from services.filter_service import is_bad_url
+from services.filter_service import is_job_list_url
 from services.filter_service import is_job_url
 from services.filter_service import is_possible_job_link
 from services.platform_service import should_follow_job_list_link
@@ -90,7 +91,7 @@ def get_job_list_link(page, link_texts: list[str]):
                 continue
 
             full_url = urljoin(get_link_base_url(page), href)
-            if is_job_url(full_url):
+            if is_job_url(full_url) or is_job_list_url(full_url):
                 return link, href, title
 
         except PlaywrightError:
