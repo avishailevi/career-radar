@@ -31,6 +31,7 @@ Already present:
 - Workday wrapper that currently delegates to the shared scanner implementation.
 - Generic scanner wrapper that delegates to the shared scanner implementation.
 - Filtering service extracted from `scanner.py`.
+- Platform behavior rules extracted from `scanner.py`.
 - Documentation under `docs/`.
 
 Known working companies from `docs/COMPANIES.md`:

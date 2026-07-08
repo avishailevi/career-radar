@@ -8,7 +8,7 @@
 
 - Validate syntax and imports after each change.
 - Keep `main.py` stable.
-- Review Workday-like company behavior next.
+- Review Workday-like company live behavior next.
 
 ## Validation
 

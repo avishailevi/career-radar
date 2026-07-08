@@ -11,13 +11,8 @@ from services.filter_service import is_bad_title
 from services.filter_service import is_bad_url
 from services.filter_service import is_job_url
 from services.filter_service import is_possible_job_link
-
-
-DETAIL_TEXT_PLATFORMS = {
-    "apple",
-    "microsoft",
-    "workday",
-}
+from services.platform_service import should_follow_job_list_link
+from services.platform_service import should_read_detail_pages
 
 DEBUG_SAMPLE_LIMIT = 5
 JOB_CARD_CONTEXT_LINES = 6
@@ -60,14 +55,6 @@ def get_job_card_text(page_text: str, title: str) -> str:
             return " ".join(clean_lines[index:end_index])
 
     return ""
-
-
-def should_read_detail_pages(company: dict) -> bool:
-    return company.get("platform") in DETAIL_TEXT_PLATFORMS
-
-
-def should_follow_job_list_link(company: dict) -> bool:
-    return company.get("platform") != "apple"
 
 
 def get_job_detail_text(context, url: str) -> str:

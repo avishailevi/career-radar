@@ -15,6 +15,7 @@ main.py
       -> scanners/generic_scanner.py
           -> scanner.py
   -> services/filter_service.py
+  -> services/platform_service.py
   -> keywords.py
 ```
 
@@ -56,6 +57,14 @@ Responsibilities:
 - Match target locations.
 - Match target keywords.
 - Build duplicate-detection keys.
+
+### `services/platform_service.py`
+
+Shared platform behavior rules.
+
+Responsibilities:
+- Decide which platforms should read job detail pages.
+- Decide which platforms should follow a job-list link from a career landing page.
 
 ### `scanners/scanner_factory.py`
 
