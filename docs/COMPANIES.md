@@ -18,7 +18,7 @@ This file tracks company scan status.
 | Microsoft | Microsoft Israel | Green | Scanner detects jobs; currently no relevant hardware matches. |
 | Broadcom | Workday-like | Yellow | Finds jobs, but not Israel yet. |
 | Google | Google Careers | Green | Detects Google job-result links and finds relevant Israel jobs. |
-| Amazon | Amazon Jobs | Red | Needs dedicated handling. |
+| Amazon | Amazon Jobs | Yellow | Opens Israel search results and detects jobs; no relevant matches yet. |
 | Qualcomm | Qualcomm Careers | Green | Detects relevant Israel jobs. |
 | Marvell | Workday-like | Yellow | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
 | Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |

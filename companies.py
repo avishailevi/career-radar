@@ -32,7 +32,7 @@ companies = [
     {
         "name": "Amazon",
         "platform": "amazon",
-        "url": "https://www.amazon.jobs/en/locations/israel",
+        "url": "https://www.amazon.jobs/en/search?country%5B%5D=ISR",
     },
     {
         "name": "Qualcomm",

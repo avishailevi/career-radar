@@ -6,9 +6,15 @@ DETAIL_TEXT_PLATFORMS = {
 }
 
 
+NO_JOB_LIST_FOLLOW_PLATFORMS = {
+    "amazon",
+    "apple",
+}
+
+
 def should_read_detail_pages(company: dict) -> bool:
     return company.get("platform") in DETAIL_TEXT_PLATFORMS
 
 
 def should_follow_job_list_link(company: dict) -> bool:
-    return company.get("platform") != "apple"
+    return company.get("platform") not in NO_JOB_LIST_FOLLOW_PLATFORMS
