@@ -53,6 +53,9 @@ def get_job_card_text(page_text: str, title: str) -> str:
 
     for index, line in enumerate(clean_lines):
         if title_lower in line.lower():
+            if "\t" in line:
+                return line
+
             end_index = index + JOB_CARD_CONTEXT_LINES
             return " ".join(clean_lines[index:end_index])
 

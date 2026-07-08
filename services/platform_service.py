@@ -3,6 +3,7 @@ DETAIL_TEXT_PLATFORMS = {
     "google",
     "mobileye",
     "microsoft",
+    "tower",
     "workday",
 }
 
@@ -10,6 +11,7 @@ DETAIL_TEXT_PLATFORMS = {
 NO_JOB_LIST_FOLLOW_PLATFORMS = {
     "amazon",
     "apple",
+    "tower",
 }
 
 

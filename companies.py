@@ -66,8 +66,8 @@ companies = [
     },
     {
         "name": "Tower Semiconductor",
-        "platform": "custom",
-        "url": "https://towersemi.com/",
+        "platform": "tower",
+        "url": "https://careers.towersemi.com/career-opportunities/engineering/",
     },
     {
         "name": "Applied Materials",

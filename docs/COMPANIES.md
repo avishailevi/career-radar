@@ -25,7 +25,7 @@ This file tracks company scan status.
 | Synopsys | Synopsys Careers | Yellow | Opens job search and detects jobs; no Israel matches in loaded results. |
 | Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
 | Nuvoton | Company site | Green | Detects relevant Herzliya jobs. |
-| Tower Semiconductor | Company site | Red | Needs career page handling. |
+| Tower Semiconductor | Company site | Green | Detects relevant Migdal Haemek engineering jobs. |
 | Applied Materials | Company site | Red | Access denied. |
 | KLA | Company site | Red | Error page. |
 | Nova | Company site | Red | Needs job parsing. |
