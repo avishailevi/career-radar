@@ -18,6 +18,7 @@ BAD_TITLES = [
     "sustainability",
     "united states",
     "standards of business conduct",
+    "israel",
 ]
 
 
@@ -25,11 +26,11 @@ JOB_URL_HINTS = [
     "/job/",
     "/jobs/",
     "/careers/job",
+    "/details/",
     "jobid",
     "job_id",
     "job-",
     "jobdetails?jobseqno",
-    "jobs.apple.com",
     "workdayjobs.com",
 ]
 
@@ -64,6 +65,9 @@ BAD_URL_PARTS = [
     "linkedin.com",
     "youtube.com",
     "mailto:",
+    "/profile/",
+    "/login",
+    "choose-country-region",
     "/products/",
     "/support/",
     "/training/",
@@ -87,7 +91,7 @@ JOB_CARD_CONTEXT_LINES = 6
 
 def is_bad_title(title: str) -> bool:
     title_lower = title.lower()
-    return any(bad in title_lower for bad in BAD_TITLES)
+    return any(bad == title_lower for bad in BAD_TITLES)
 
 
 def is_bad_url(url: str) -> bool:
@@ -170,6 +174,14 @@ def get_job_card_text(page_text: str, title: str) -> str:
     return ""
 
 
+def get_job_key(company_name: str, title: str, matched_location: str) -> tuple[str, str, str]:
+    return (
+        company_name.lower(),
+        title.strip().lower(),
+        matched_location.strip().lower(),
+    )
+
+
 def should_read_detail_pages(company: dict) -> bool:
     return company.get("platform") in DETAIL_TEXT_PLATFORMS
 
@@ -243,6 +255,7 @@ def try_follow_job_list_link(page) -> str | None:
 def scan_company(company: dict, debug: bool = False) -> list[dict]:
     relevant_jobs = []
     seen_urls = set()
+    seen_jobs = set()
 
     total_links = 0
     usable_links = 0
@@ -251,6 +264,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     job_url_count = 0
     location_match_count = 0
     keyword_match_count = 0
+    duplicate_job_count = 0
     detail_page_count = 0
     empty_detail_page_count = 0
     page_text_fallback_count = 0
@@ -404,6 +418,17 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 if not matched_keyword:
                     continue
 
+                job_key = get_job_key(
+                    company["name"],
+                    title,
+                    matched_location,
+                )
+
+                if job_key in seen_jobs:
+                    duplicate_job_count += 1
+                    continue
+
+                seen_jobs.add(job_key)
                 keyword_match_count += 1
 
                 if matched_from_detail:
@@ -447,6 +472,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         print(f"  Bad URLs filtered: {bad_url_count}")
         print(f"  Job-like URLs: {job_url_count}")
         print(f"  Location matches: {location_match_count}")
+        print(f"  Duplicate jobs filtered: {duplicate_job_count}")
 
         if read_detail_pages:
             print(f"  Detail pages checked: {detail_page_count}")
