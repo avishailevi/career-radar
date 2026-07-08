@@ -389,6 +389,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "title": title,
                         "url": full_url,
                         "matched_keyword": matched_keyword,
+                        "matched_location": matched_location,
                     }
                 )
 
