@@ -77,9 +77,11 @@ BAD_URL_PARTS = [
 
 DETAIL_TEXT_PLATFORMS = {
     "microsoft",
+    "workday",
 }
 
 DEBUG_SAMPLE_LIMIT = 5
+JOB_CARD_CONTEXT_LINES = 6
 
 
 def is_bad_title(title: str) -> bool:
@@ -150,6 +152,23 @@ def get_matching_text_lines(page_text: str) -> list[str]:
     return matching_lines
 
 
+def get_job_card_text(page_text: str, title: str) -> str:
+    clean_lines = [
+        line.strip()
+        for line in page_text.splitlines()
+        if line.strip()
+    ]
+
+    title_lower = title.lower()
+
+    for index, line in enumerate(clean_lines):
+        if title_lower in line.lower():
+            end_index = index + JOB_CARD_CONTEXT_LINES
+            return " ".join(clean_lines[index:end_index])
+
+    return ""
+
+
 def should_read_detail_pages(company: dict) -> bool:
     return company.get("platform") in DETAIL_TEXT_PLATFORMS
 
@@ -171,7 +190,7 @@ def get_job_detail_text(context, url: str) -> str:
             pass
 
         detail_page.wait_for_timeout(2000)
-        return detail_page.locator("body").inner_text(timeout=10000)
+        return detail_page.locator("body").inner_text(timeout=10000).strip()
 
     except PlaywrightError:
         return ""
@@ -229,6 +248,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     keyword_match_count = 0
     detail_page_count = 0
     empty_detail_page_count = 0
+    page_text_fallback_count = 0
     detail_keyword_match_count = 0
     page_url = ""
     page_title = ""
@@ -331,7 +351,8 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     continue
 
                 job_url_count += 1
-                text_to_check = f"{title} {full_url}"
+                text_to_check = title
+                matched_from_detail = False
 
                 add_debug_sample(
                     job_url_samples,
@@ -340,6 +361,21 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "url": full_url,
                     },
                 )
+
+                if read_detail_pages:
+                    detail_page_count += 1
+                    detail_text = get_job_detail_text(page.context, full_url)
+
+                    if detail_text:
+                        matched_from_detail = True
+                        text_to_check = f"{text_to_check} {detail_text}"
+                    else:
+                        empty_detail_page_count += 1
+                        card_text = get_job_card_text(page_text, title)
+
+                        if card_text:
+                            page_text_fallback_count += 1
+                            text_to_check = f"{text_to_check} {card_text}"
 
                 matched_location = find_matching_location(text_to_check)
 
@@ -359,23 +395,13 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 matched_keyword = find_matching_keyword(text_to_check)
 
-                if not matched_keyword and read_detail_pages:
-                    detail_page_count += 1
-                    detail_text = get_job_detail_text(page.context, full_url)
-
-                    if detail_text:
-                        text_to_check = f"{text_to_check} {detail_text}"
-                        matched_keyword = find_matching_keyword(text_to_check)
-
-                        if matched_keyword:
-                            detail_keyword_match_count += 1
-                    else:
-                        empty_detail_page_count += 1
-
                 if not matched_keyword:
                     continue
 
                 keyword_match_count += 1
+
+                if matched_from_detail:
+                    detail_keyword_match_count += 1
 
                 add_debug_sample(
                     keyword_match_samples,
@@ -419,6 +445,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         if read_detail_pages:
             print(f"  Detail pages checked: {detail_page_count}")
             print(f"  Empty detail pages: {empty_detail_page_count}")
+            print(f"  Page text fallbacks: {page_text_fallback_count}")
             print(f"  Detail keyword matches: {detail_keyword_match_count}")
 
         print(f"  Keyword matches: {keyword_match_count}")
