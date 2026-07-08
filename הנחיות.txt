@@ -59,6 +59,7 @@ ScannerFactory בוחר סורק לפי platform מתוך mapping מפורש.
 scanner.py הוא עדיין מנוע הסריקה המרכזי בפועל.
 יש מחלקות סורק מפורשות לפלטפורמות המרכזיות: Workday, Apple, Microsoft, Google, Amazon ו-Generic.
 רוב מחלקות הסורק עדיין עוטפות את scan_company, אבל הן מאפשרות לפתח לוגיקה ייעודית לכל פלטפורמה בלי לשנות את main.py.
+נוסף audit_companies.py שמריץ חברות, אוסף Debug, מסווג תוצאות, ומייצר דו״ח Markdown בתיקיית reports.
 DEBUG=True כרגע כדי להבין למה חברות לא מחזירות תוצאות.
 
 השלב הנוכחי הוא לא להוסיף פיצ׳רים חדשים, אלא לייצב כיסוי אמיתי של חברות ופלטפורמות.
@@ -99,22 +100,30 @@ Elbit – Partial – uses GenericScanner; needs real job page verification.
 
 Current next step
 
-להמשיך ב-batches של כמה חברות במצב Partial, ולהעביר חברות ל-Supported רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
+לעבור לעבודה אוטומטית יותר: להריץ audit_companies.py, לקבל דו״ח אחד מסודר, ולתקן לפי הסטטוסים בדו״ח במקום להעתיק פלטים ארוכים מהטרמינל.
 
 עדיפות עבודה:
 
-1. להריץ regression על חברות שכבר נחשבות נתמכות: NVIDIA, Apple, Intel, Microsoft.
-2. להריץ batch ראשון על כמה חברות Partial יחד.
-3. אם הבעיה שייכת לפלטפורמה שלמה, לפתור ברמת הפלטפורמה ולא ברמת החברה.
+1. להריץ audit על כל החברות או על batch של חברות Partial.
+2. לעבוד מתוך reports/company_audit_*.md.
+3. לתקן קודם בעיות שחוזרות על עצמן ברמת platform.
 4. להוסיף לוגיקה ייעודית בתוך מחלקת הסורק המתאימה, ולא בתוך main.py.
 5. לעדכן את המטריצה במסמך אחרי כל חברה שמסתיימת.
 
-הרצת כמה חברות במכה:
+הרצת Audit אוטומטי:
 
-python main.py Broadcom Google Amazon Marvell
-python main.py Qualcomm Cadence Synopsys Mobileye
-python main.py Nuvoton KLA Nova SolarEdge
-python main.py Rafael IAI Elbit
+python audit_companies.py
+
+או לכמה חברות:
+
+python audit_companies.py Broadcom Google Amazon Marvell
+python audit_companies.py Qualcomm Cadence Synopsys Mobileye
+python audit_companies.py Nuvoton KLA Nova SolarEdge
+python audit_companies.py Rafael IAI Elbit
+
+הדו״ח נשמר תחת:
+
+reports/company_audit_*.md
 
 ארכיטקטורה נוכחית
 
@@ -125,6 +134,12 @@ main.py
     -> חילוץ קישורים ודפי משרה
     -> Keyword + Location Filter
     -> Relevant Jobs
+
+audit_companies.py
+    -> ScannerFactory
+    -> Debug capture
+    -> Result classification
+    -> Markdown report
 
 פלטפורמות
 
@@ -154,14 +169,11 @@ Regression checklist
 
 אחרי כל שינוי משמעותי יש להריץ לפחות:
 
-python main.py NVIDIA
-python main.py Apple
-python main.py Intel
-python main.py Microsoft
+python audit_companies.py NVIDIA Apple Intel Microsoft
 
 ולאחר מכן, כאשר השינוי נראה תקין:
 
-python main.py
+python audit_companies.py
 
 אם חברה שכבר עבדה נשברת, קודם מתקנים את הרגרסיה ורק אחר כך ממשיכים.
 
@@ -238,3 +250,4 @@ Change Log
 - ScannerFactory עודכן לעבוד עם mapping מפורש לפי פלטפורמה.
 - נוספו סורקים מפורשים ל-Generic, Apple, Microsoft, Google ו-Amazon.
 - main.py עודכן לתמוך בהרצת כמה חברות בפקודה אחת.
+- נוסף audit_companies.py כדי לייצר דו״ח אבחון אוטומטי ולצמצם העתקת לוגים ידנית.
