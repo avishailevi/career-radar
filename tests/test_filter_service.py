@@ -36,6 +36,19 @@ class FilterServiceTest(unittest.TestCase):
 
         self.assertTrue(is_bad_url(url))
 
+    def test_nuvoton_job_url_is_job_url(self):
+        url = (
+            "https://nuvoton.co.il/careers/co/chip-design/60.D63/"
+            "chip-design-engineer/all"
+        )
+
+        self.assertTrue(is_job_url(url))
+
+    def test_nuvoton_category_url_is_not_job_url(self):
+        url = "https://nuvoton.co.il/careers/co/architecture/all"
+
+        self.assertFalse(is_job_url(url))
+
     def test_title_from_google_job_url_removes_numeric_id(self):
         url = (
             "https://www.google.com/about/careers/applications/"

@@ -75,6 +75,7 @@ BAD_URL_PARTS = [
     "/sustainability",
     "/environmental-social",
     "/corporate-responsibility",
+    "privacy-job-candidates",
 ]
 
 
@@ -100,6 +101,14 @@ def is_job_url(url: str) -> bool:
 
     if "/about/careers/applications/jobs/results/" in parsed_url.path:
         return not parsed_url.path.rstrip("/").endswith("/jobs/results")
+
+    if "/careers/co/" in parsed_url.path:
+        path_parts = [
+            part
+            for part in parsed_url.path.split("/")
+            if part
+        ]
+        return len(path_parts) >= 6
 
     return any(hint in url_lower for hint in JOB_URL_HINTS)
 

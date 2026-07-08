@@ -24,7 +24,7 @@ This file tracks company scan status.
 | Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |
 | Synopsys | Synopsys Careers | Yellow | Opens job search and detects jobs; no Israel matches in loaded results. |
 | Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
-| Nuvoton | Company site | Red | Needs dedicated parsing. |
+| Nuvoton | Company site | Green | Detects relevant Herzliya jobs. |
 | Tower Semiconductor | Company site | Red | Needs career page handling. |
 | Applied Materials | Company site | Red | Access denied. |
 | KLA | Company site | Red | Error page. |
