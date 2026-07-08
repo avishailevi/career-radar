@@ -246,6 +246,9 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         page = browser.new_page()
 
         print(f"\nScanning {company['name']}...")
+        if debug:
+            print(f"  Platform: {company.get('platform')}")
+            print(f"  Read detail pages: {read_detail_pages}")
 
         try:
             page.goto(
