@@ -18,6 +18,87 @@ Telegram
 
 קודם בונים מערכת יציבה שעובדת.
 
+סטטוס נוכחי של הפרויקט
+
+הריפו הפעיל:
+
+avishailevi/career-radar
+
+ה-branch הראשי:
+
+main
+
+נקודת ההמשך הנוכחית:
+
+הפרויקט כבר עבר ל-GitHub, ולכן אין לבקש ממני להעתיק קבצים או להעלות קבצים מחדש אם יש גישה לריפו.
+
+המבנה הנוכחי כולל לפחות את הקבצים המרכזיים האלה:
+
+main.py
+companies.py
+keywords.py
+scanner.py
+scanners/scanner_factory.py
+scanners/workday_scanner.py
+requirements.txt
+
+מצב הקוד הנוכחי:
+
+main.py מריץ סריקה לפי כל החברות או לפי שם חברה שמועבר כארגומנט.
+ScannerFactory בוחר סורק לפי platform.
+WorkdayScanner קיים, אבל כרגע הוא רק עוטף את scan_company הכללי.
+scanner.py הוא עדיין הסורק המרכזי בפועל.
+DEBUG=True כרגע, כדי לראות למה חברות לא מחזירות תוצאות.
+companies.py מכיל את רשימת החברות הנוכחית, כולל NVIDIA, Apple, Broadcom, Intel, Microsoft, Google, Amazon, Qualcomm, Marvell, Cadence, Synopsys, Mobileye, Nuvoton, Tower Semiconductor, Applied Materials, KLA, Nova, SolarEdge, Rafael, Israel Aerospace Industries, Elbit.
+keywords.py מכיל מילות חיפוש לתפקידי חומרה, שבבים, וריפיקציה, Board Design, Embedded, Integration וכו׳.
+
+מה כבר עובד לפי ההקשר הקודם:
+
+הרצה כללית של python main.py עובדת ומחזירה לפחות חלק מהמשרות הרלוונטיות.
+נמצאו בעבר תוצאות רלוונטיות מ-NVIDIA ומ-Apple.
+המערכת כבר יודעת לסרוק כמה חברות ברצף ולהדפיס Relevant jobs found.
+נוסף מנגנון Debug שמציג Page URL, Page title, Total links, Usable links, Job-like URLs, Location matches, Keyword matches, Relevant jobs ודוגמאות קישורים.
+
+בעיות פתוחות לפי ההקשר הקודם:
+
+Intel:
+
+בעבר Intel לא החזירה משרות רלוונטיות.
+הבעיה שנראתה: נמצאו Job-like URLs אבל לא נמצאו Location matches או Keyword matches, כנראה בגלל אופן טעינת/סינון Workday או בגלל שהטקסט הדרוש נמצא בדפי הפרטים ולא בדף הרשימה.
+יש URL מעודכן ב-companies.py שמכוון ל-Workday עם location filters בישראל.
+השלב הבא הוא לבדוק את Intel עם:
+
+python main.py Intel
+
+ולתקן רק את מה שמונע זיהוי משרות Intel.
+
+Microsoft:
+
+בעבר Microsoft כן הציגה קישורי משרות, למשל Security Research Intern, Software Engineer - Fabric Platform, E2E Program Manager.
+הבעיה שנראתה: היו Location matches אבל Keyword matches נשאר 0, ולכן Relevant jobs היה 0.
+הסורק הכללי מוגדר לקרוא דפי פרטים עבור platform=microsoft, ולכן אם עדיין אין התאמות צריך לבדוק האם דפי הפרטים נטענים, האם הטקסט מכיל מילות מפתח, או האם צריך להוסיף מילות מפתח מדויקות יותר.
+השלב הבא הוא לבדוק את Microsoft עם:
+
+python main.py Microsoft
+
+ולתקן רק את מה שמונע זיהוי משרות Microsoft.
+
+עדיפות עבודה כרגע:
+
+1. לבדוק את מצב הריפו וה-branch לפני כל שינוי.
+2. לתקן קודם את Intel.
+3. לתקן אחר כך את Microsoft.
+4. להריץ בדיקות נקודתיות:
+
+python main.py Intel
+python main.py Microsoft
+
+5. רק לאחר מכן להריץ:
+
+python main.py
+
+6. לא להוסיף פיצ׳רים חדשים לפני שהסריקה הבסיסית יציבה.
+
 שיטת העבודה
 
 עבוד איתי כמו Senior Software Engineer / Tech Lead שמוביל את הפרויקט.
