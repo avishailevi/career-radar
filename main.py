@@ -24,7 +24,7 @@ def get_companies_to_scan():
 
 def main():
     print("=" * 50)
-    print("🤖 Career Hunter AI")
+    print("Career Radar")
     print("=" * 50)
 
     companies_to_scan = get_companies_to_scan()
