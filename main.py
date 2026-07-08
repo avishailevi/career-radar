@@ -7,6 +7,13 @@ from scanners.scanner_factory import ScannerFactory
 DEBUG = True
 
 
+def configure_output_encoding() -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except AttributeError:
+        pass
+
+
 def get_companies_to_scan():
     if len(sys.argv) == 1:
         return companies
@@ -23,6 +30,8 @@ def get_companies_to_scan():
 
 
 def main():
+    configure_output_encoding()
+
     print("=" * 50)
     print("Career Radar")
     print("=" * 50)
