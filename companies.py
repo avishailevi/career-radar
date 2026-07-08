@@ -1,0 +1,26 @@
+companies = [
+    {"name": "NVIDIA", "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"},
+    {"name": "Apple", "url": "https://jobs.apple.com/en-il/search?location=israel-ISR"},
+    {"name": "Broadcom", "url": "https://www.broadcom.com/company/careers"},
+    {
+        "name": "Intel",
+        "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?locations=1e4a4eb3adf1013563ba9174bf817fcd&locations=1e4a4eb3adf101aaeda8a474bf818ecd&locations=1e4a4eb3adf101f41cd29774bf8184cd",
+    },
+    {"name": "Microsoft", "url": "https://www.microsoftrnd.co.il/jobs"},
+    {"name": "Google", "url": "https://www.google.com/about/careers/applications/jobs/results/?location=Israel"},
+    {"name": "Amazon", "url": "https://www.amazon.jobs/en/locations/israel"},
+    {"name": "Qualcomm", "url": "https://careers.qualcomm.com/"},
+    {"name": "Marvell", "url": "https://www.marvell.com/company/careers.html"},
+    {"name": "Cadence", "url": "https://www.cadence.com/en_US/home/company/careers.html"},
+    {"name": "Synopsys", "url": "https://www.synopsys.com/company/careers.html"},
+    {"name": "Mobileye", "url": "https://www.mobileye.com/careers/"},
+    {"name": "Nuvoton", "url": "https://nuvoton.co.il/careers/"},
+    {"name": "Tower Semiconductor", "url": "https://towersemi.com/"},
+    {"name": "Applied Materials", "url": "https://www.appliedmaterials.com/us/en/careers.html"},
+    {"name": "KLA", "url": "https://www.kla.com/careers"},
+    {"name": "Nova", "url": "https://www.novami.com/careers/"},
+    {"name": "SolarEdge", "url": "https://corporate.solaredge.com/en/careers/open-positions"},
+    {"name": "Rafael", "url": "https://www.rafael.co.il/careers/"},
+    {"name": "Israel Aerospace Industries", "url": "https://www.iai.co.il/about/working-in-iai/"},
+    {"name": "Elbit", "url": "https://elbitsystems.com/careers/"}
+]

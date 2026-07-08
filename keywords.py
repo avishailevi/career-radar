@@ -1,0 +1,40 @@
+keywords = [
+    "Physical Design",
+    "ASIC",
+    "VLSI",
+    "RTL",
+    "FPGA",
+    "Verification",
+    "Design Verification",
+    "UVM",
+    "SystemVerilog",
+    "Verilog",
+    "Board Design",
+    "Hardware",
+    "Electrical Engineer",
+    "System Integration",
+    "Integration Engineer",
+    "Embedded",
+    "PCB",
+    "Signal Integrity",
+    "Power Integrity",
+    "DDR",
+    "PCIe",
+    "STA",
+    "Timing",
+    "Place and Route",
+    "Floorplanning"
+]
+
+locations = [
+    "Israel",
+    "IL",
+    "Tel Aviv",
+    "Haifa",
+    "Herzliya",
+    "Jerusalem",
+    "Yokneam",
+    "Ra'anana",
+    "Petah Tikva",
+    "Netanya"
+]
