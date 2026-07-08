@@ -77,6 +77,7 @@ BAD_URL_PARTS = [
 
 DETAIL_TEXT_PLATFORMS = {
     "microsoft",
+    "workday",
 }
 
 DEBUG_SAMPLE_LIMIT = 5
@@ -328,6 +329,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 job_url_count += 1
                 text_to_check = f"{title} {full_url}"
+                detail_text_checked = False
 
                 add_debug_sample(
                     job_url_samples,
@@ -336,6 +338,14 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "url": full_url,
                     },
                 )
+
+                if read_detail_pages:
+                    detail_text = get_job_detail_text(page.context, full_url)
+
+                    if detail_text:
+                        detail_page_count += 1
+                        detail_text_checked = True
+                        text_to_check = f"{text_to_check} {detail_text}"
 
                 matched_location = find_matching_location(text_to_check)
 
@@ -355,21 +365,13 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 matched_keyword = find_matching_keyword(text_to_check)
 
-                if not matched_keyword and read_detail_pages:
-                    detail_text = get_job_detail_text(page.context, full_url)
-
-                    if detail_text:
-                        detail_page_count += 1
-                        text_to_check = f"{text_to_check} {detail_text}"
-                        matched_keyword = find_matching_keyword(text_to_check)
-
-                        if matched_keyword:
-                            detail_keyword_match_count += 1
-
                 if not matched_keyword:
                     continue
 
                 keyword_match_count += 1
+
+                if detail_text_checked:
+                    detail_keyword_match_count += 1
 
                 add_debug_sample(
                     keyword_match_samples,
