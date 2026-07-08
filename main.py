@@ -14,16 +14,31 @@ def configure_output_encoding() -> None:
         pass
 
 
+def get_requested_company_names() -> list[str]:
+    requested_names = []
+
+    for arg in sys.argv[1:]:
+        for name in arg.split(","):
+            clean_name = name.strip().lower()
+            if clean_name:
+                requested_names.append(clean_name)
+
+    return requested_names
+
+
 def get_companies_to_scan():
     if len(sys.argv) == 1:
         return companies
 
-    requested_company = " ".join(sys.argv[1:]).lower()
+    requested_company_names = get_requested_company_names()
 
     matching_companies = [
         company
         for company in companies
-        if requested_company in company["name"].lower()
+        if any(
+            requested_name in company["name"].lower()
+            for requested_name in requested_company_names
+        )
     ]
 
     return matching_companies
@@ -59,6 +74,7 @@ def main():
         print(f"\nCompany: {job['company']}")
         print(f"Title: {job['title']}")
         print(f"Matched: {job['matched_keyword']}")
+        print(f"Location: {job.get('matched_location', 'Unknown')}")
         print(f"URL: {job['url']}")
 
 

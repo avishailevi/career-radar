@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock
 from unittest.mock import patch
 
 from scanners.scanner_factory import ScannerFactory
@@ -20,18 +21,17 @@ class ScannerFactoryTest(unittest.TestCase):
             }
         ]
 
-        with patch(
-            "scanners.scanner_factory.WorkdayScanner"
-        ) as workday_scanner_class:
-            workday_scanner = workday_scanner_class.return_value
-            workday_scanner.scan.return_value = expected_jobs
+        workday_scanner_class = Mock()
+        workday_scanner = workday_scanner_class.return_value
+        workday_scanner.scan.return_value = expected_jobs
 
+        with patch.dict(ScannerFactory.SCANNERS, {"workday": workday_scanner_class}):
             jobs = ScannerFactory.scan(company, debug=True)
 
         self.assertEqual(jobs, expected_jobs)
         workday_scanner.scan.assert_called_once_with(company, debug=True)
 
-    def test_other_platform_uses_generic_scanner(self):
+    def test_apple_platform_uses_apple_scanner(self):
         company = {
             "name": "Apple",
             "platform": "apple",
@@ -46,15 +46,31 @@ class ScannerFactoryTest(unittest.TestCase):
             }
         ]
 
-        with patch(
-            "scanners.scanner_factory.GenericScanner"
-        ) as generic_scanner_class:
-            generic_scanner = generic_scanner_class.return_value
-            generic_scanner.scan.return_value = expected_jobs
+        apple_scanner_class = Mock()
+        apple_scanner = apple_scanner_class.return_value
+        apple_scanner.scan.return_value = expected_jobs
 
+        with patch.dict(ScannerFactory.SCANNERS, {"apple": apple_scanner_class}):
             jobs = ScannerFactory.scan(company, debug=False)
 
         self.assertEqual(jobs, expected_jobs)
+        apple_scanner.scan.assert_called_once_with(company, debug=False)
+
+    def test_custom_platform_uses_generic_scanner(self):
+        company = {
+            "name": "KLA",
+            "platform": "custom",
+            "url": "https://example.com",
+        }
+
+        generic_scanner_class = Mock()
+        generic_scanner = generic_scanner_class.return_value
+        generic_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"custom": generic_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
         generic_scanner.scan.assert_called_once_with(company, debug=False)
 
     def test_missing_platform_uses_generic_scanner(self):
@@ -63,12 +79,11 @@ class ScannerFactoryTest(unittest.TestCase):
             "url": "https://example.com",
         }
 
-        with patch(
-            "scanners.scanner_factory.GenericScanner"
-        ) as generic_scanner_class:
-            generic_scanner = generic_scanner_class.return_value
-            generic_scanner.scan.return_value = []
+        generic_scanner_class = Mock()
+        generic_scanner = generic_scanner_class.return_value
+        generic_scanner.scan.return_value = []
 
+        with patch.dict(ScannerFactory.SCANNERS, {"generic": generic_scanner_class}):
             jobs = ScannerFactory.scan(company)
 
         self.assertEqual(jobs, [])

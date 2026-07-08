@@ -319,7 +319,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     continue
 
                 job_url_count += 1
-                text_to_check = title
+                text_to_check = f"{title} {full_url}"
                 matched_from_detail = False
 
                 add_debug_sample(
@@ -398,6 +398,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "title": title,
                         "url": full_url,
                         "matched_keyword": matched_keyword,
+                        "matched_location": matched_location,
                     }
                 )
 
