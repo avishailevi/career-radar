@@ -23,7 +23,7 @@ This file tracks company scan status.
 | Marvell | Workday-like | Yellow | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
 | Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |
 | Synopsys | Synopsys Careers | Yellow | Opens job search and detects jobs; no Israel matches in loaded results. |
-| Mobileye | Mobileye Careers | Red | Current URL returned 404. |
+| Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
 | Nuvoton | Company site | Red | Needs dedicated parsing. |
 | Tower Semiconductor | Company site | Red | Needs career page handling. |
 | Applied Materials | Company site | Red | Access denied. |

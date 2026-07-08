@@ -8,6 +8,7 @@ from services.filter_service import find_matching_keyword
 from services.filter_service import find_matching_location
 from services.filter_service import get_job_key
 from services.filter_service import get_title_from_url
+from services.filter_service import is_identifier_title
 from services.filter_service import is_bad_title
 from services.filter_service import is_bad_url
 from services.filter_service import is_job_url
@@ -272,8 +273,10 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 usable_links += 1
                 full_url = urljoin(link_base_url, href)
-                if not title:
-                    title = get_title_from_url(full_url)
+                if not title or is_identifier_title(title):
+                    title_from_url = get_title_from_url(full_url)
+                    if title_from_url:
+                        title = title_from_url
 
                 if not title:
                     continue

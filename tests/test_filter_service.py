@@ -2,6 +2,7 @@ import unittest
 
 from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_url
+from services.filter_service import is_identifier_title
 from services.filter_service import is_job_url
 
 
@@ -45,10 +46,30 @@ class FilterServiceTest(unittest.TestCase):
 
         self.assertEqual(title, "Soc Dft Engineer Google Cloud")
 
+    def test_title_from_mobileye_job_url_uses_title_slug_before_identifier(self):
+        url = (
+            "https://careers.mobileye.com/jobs/3d-algorithm-developer/"
+            "bb661a53-79b8-459d-a8df-5dd419d62596"
+        )
+
+        title = get_title_from_url(url)
+
+        self.assertEqual(title, "3D Algorithm Developer")
+
     def test_title_from_empty_url_path_is_empty(self):
         title = get_title_from_url("https://www.google.com/")
 
         self.assertEqual(title, "")
+
+    def test_uuid_like_title_is_identifier_title(self):
+        title = "Bb661A53 79B8 459D A8Df 5Dd419D62596"
+
+        self.assertTrue(is_identifier_title(title))
+
+    def test_normal_job_title_is_not_identifier_title(self):
+        title = "Senior Silicon Physical Design Engineer"
+
+        self.assertFalse(is_identifier_title(title))
 
 
 if __name__ == "__main__":

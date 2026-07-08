@@ -56,7 +56,7 @@ companies = [
     },
     {
         "name": "Mobileye",
-        "platform": "custom",
+        "platform": "mobileye",
         "url": "https://www.mobileye.com/careers/",
     },
     {

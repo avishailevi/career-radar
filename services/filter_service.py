@@ -109,12 +109,25 @@ def is_possible_job_link(title: str, url: str) -> bool:
     return any(hint in text for hint in POSSIBLE_JOB_TEXT_HINTS)
 
 
+def is_identifier_title(title: str) -> bool:
+    compact_title = title.replace("-", "").replace(" ", "")
+
+    if len(compact_title) < 16:
+        return False
+
+    return all(character in "0123456789abcdefABCDEF" for character in compact_title)
+
+
 def get_title_from_url(url: str) -> str:
     path = urlparse(url).path.rstrip("/")
-    slug = unquote(path.rsplit("/", 1)[-1])
+    path_parts = path.split("/")
+    slug = unquote(path_parts[-1])
 
     if not slug:
         return ""
+
+    if is_identifier_title(slug) and len(path_parts) > 1:
+        slug = unquote(path_parts[-2])
 
     parts = slug.split("-", 1)
     if parts[0].isdigit() and len(parts) > 1:
