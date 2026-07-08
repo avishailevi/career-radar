@@ -19,6 +19,5 @@
 ## Known Follow-Up Work
 
 - Stabilize Workday-like companies.
-- Stabilize Google scanning.
 - Review red/yellow company statuses in `docs/COMPANIES.md`.
 - Keep documentation aligned with the code after each small refactor.

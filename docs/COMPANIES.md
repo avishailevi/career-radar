@@ -17,7 +17,7 @@ This file tracks company scan status.
 | Intel | Workday | Green | Israel location URL works. |
 | Microsoft | Microsoft Israel | Green | Scanner detects jobs; currently no relevant hardware matches. |
 | Broadcom | Workday-like | Yellow | Finds jobs, but not Israel yet. |
-| Google | Google Careers | Yellow | Page loads, job links are not detected reliably yet. |
+| Google | Google Careers | Green | Detects Google job-result links and finds relevant Israel jobs. |
 | Amazon | Amazon Jobs | Red | Needs dedicated handling. |
 | Qualcomm | Qualcomm Careers | Red | Needs Israel filtering. |
 | Marvell | Workday-like | Red | Needs Israel filtering. |

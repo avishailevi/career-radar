@@ -1,5 +1,6 @@
 DETAIL_TEXT_PLATFORMS = {
     "apple",
+    "google",
     "microsoft",
     "workday",
 }

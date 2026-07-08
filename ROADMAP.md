@@ -39,11 +39,12 @@ Known working companies from `docs/COMPANIES.md`:
 - Apple.
 - Intel.
 - Microsoft.
+- Google.
 
 Highest-priority next work:
 - Keep Workday behavior stable while preparing for platform-specific scanner logic.
 - Stabilize Workday-like companies.
-- Then stabilize Google.
+- Review remaining red/yellow company statuses.
 
 ## Later
 

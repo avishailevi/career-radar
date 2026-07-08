@@ -23,6 +23,12 @@ class PlatformServiceTest(unittest.TestCase):
         self.assertTrue(should_read_detail_pages(company))
         self.assertTrue(should_follow_job_list_link(company))
 
+    def test_google_reads_detail_pages_and_follows_job_list_link(self):
+        company = {"platform": "google"}
+
+        self.assertTrue(should_read_detail_pages(company))
+        self.assertTrue(should_follow_job_list_link(company))
+
     def test_other_platform_does_not_read_detail_pages(self):
         company = {"platform": "custom"}
 

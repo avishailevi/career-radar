@@ -1,4 +1,6 @@
 import re
+from urllib.parse import unquote
+from urllib.parse import urlparse
 
 from keywords import keywords, locations
 
@@ -27,6 +29,7 @@ JOB_URL_HINTS = [
     "job_id",
     "job-",
     "jobdetails?jobseqno",
+    "jobs/results/",
     "workdayjobs.com",
 ]
 
@@ -82,17 +85,42 @@ def is_bad_title(title: str) -> bool:
 
 def is_bad_url(url: str) -> bool:
     url_lower = url.lower()
+    if url_lower.endswith(".pdf"):
+        return True
+
+    if "/about/careers/applications/jobs/results/" in url_lower:
+        return False
+
     return any(bad in url_lower for bad in BAD_URL_PARTS)
 
 
 def is_job_url(url: str) -> bool:
     url_lower = url.lower()
+    parsed_url = urlparse(url_lower)
+
+    if "/about/careers/applications/jobs/results/" in parsed_url.path:
+        return not parsed_url.path.rstrip("/").endswith("/jobs/results")
+
     return any(hint in url_lower for hint in JOB_URL_HINTS)
 
 
 def is_possible_job_link(title: str, url: str) -> bool:
     text = f"{title} {url}".lower()
     return any(hint in text for hint in POSSIBLE_JOB_TEXT_HINTS)
+
+
+def get_title_from_url(url: str) -> str:
+    path = urlparse(url).path.rstrip("/")
+    slug = unquote(path.rsplit("/", 1)[-1])
+
+    if not slug:
+        return ""
+
+    parts = slug.split("-", 1)
+    if parts[0].isdigit() and len(parts) > 1:
+        slug = parts[1]
+
+    return slug.replace("-", " ").strip().title()
 
 
 def keyword_matches(keyword: str, text: str) -> bool:

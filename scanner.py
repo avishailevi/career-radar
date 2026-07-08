@@ -7,6 +7,7 @@ from services.filter_service import POSSIBLE_JOB_TEXT_HINTS
 from services.filter_service import find_matching_keyword
 from services.filter_service import find_matching_location
 from services.filter_service import get_job_key
+from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_title
 from services.filter_service import is_bad_url
 from services.filter_service import is_job_url
@@ -55,6 +56,19 @@ def get_job_card_text(page_text: str, title: str) -> str:
             return " ".join(clean_lines[index:end_index])
 
     return ""
+
+
+def get_link_base_url(page) -> str:
+    try:
+        base = page.locator("base").first
+        if base.count() > 0:
+            base_href = base.get_attribute("href")
+            if base_href:
+                return base_href
+    except PlaywrightError:
+        pass
+
+    return page.url
 
 
 def get_job_detail_text(context, url: str) -> str:
@@ -148,6 +162,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     page_url = ""
     page_title = ""
     page_text = ""
+    link_base_url = ""
     followed_link_text = None
     read_detail_pages = should_read_detail_pages(company)
 
@@ -199,6 +214,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         except PlaywrightError:
             page_text = ""
 
+        link_base_url = get_link_base_url(page)
         links = page.locator("a").all()
         total_links = len(links)
 
@@ -207,11 +223,16 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 title = link.inner_text().strip()
                 href = link.get_attribute("href")
 
-                if not title or not href:
+                if not href:
                     continue
 
                 usable_links += 1
-                full_url = urljoin(page.url, href)
+                full_url = urljoin(link_base_url, href)
+                if not title:
+                    title = get_title_from_url(full_url)
+
+                if not title:
+                    continue
 
                 add_debug_sample(
                     usable_link_samples,
