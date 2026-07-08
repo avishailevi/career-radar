@@ -1,7 +1,7 @@
 import sys
 
 from companies import companies
-from scanner import scan_company
+from scanners.scanner_factory import ScannerFactory
 
 
 DEBUG = True
@@ -36,7 +36,7 @@ def main():
     all_jobs = []
 
     for company in companies_to_scan:
-        jobs = scan_company(company, debug=DEBUG)
+        jobs = ScannerFactory.scan(company, debug=DEBUG)
         all_jobs.extend(jobs)
 
     print("\nRelevant jobs found:")
