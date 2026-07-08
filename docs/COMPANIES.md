@@ -20,7 +20,7 @@ This file tracks company scan status.
 | Google | Google Careers | Green | Detects Google job-result links and finds relevant Israel jobs. |
 | Amazon | Amazon Jobs | Red | Needs dedicated handling. |
 | Qualcomm | Qualcomm Careers | Red | Needs Israel filtering. |
-| Marvell | Workday-like | Red | Needs Israel filtering. |
+| Marvell | Workday-like | Yellow | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
 | Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |
 | Synopsys | Synopsys Careers | Red | Current URL returned 404. |
 | Mobileye | Mobileye Careers | Red | Current URL returned 404. |

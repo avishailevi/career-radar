@@ -71,6 +71,30 @@ def get_link_base_url(page) -> str:
     return page.url
 
 
+def get_job_list_link(page, link_texts: list[str]):
+    links = page.locator("a").all()
+
+    for link in links:
+        try:
+            title = link.inner_text().strip()
+            href = link.get_attribute("href")
+
+            if not title or not href:
+                continue
+
+            if title not in link_texts:
+                continue
+
+            full_url = urljoin(get_link_base_url(page), href)
+            if is_job_url(full_url):
+                return link, href, title
+
+        except PlaywrightError:
+            continue
+
+    return None, None, None
+
+
 def get_job_detail_text(context, url: str) -> str:
     detail_page = None
 
@@ -109,6 +133,26 @@ def try_follow_job_list_link(page) -> str | None:
         "Open Positions",
         "Jobs",
     ]
+
+    job_link, job_href, job_title = get_job_list_link(page, link_texts)
+    if job_link and job_href and job_title:
+        try:
+            page.goto(
+                urljoin(get_link_base_url(page), job_href),
+                wait_until="domcontentloaded",
+                timeout=30000,
+            )
+
+            try:
+                page.wait_for_load_state("networkidle", timeout=30000)
+            except PlaywrightError:
+                pass
+
+            page.wait_for_timeout(3000)
+            return job_title
+
+        except PlaywrightError:
+            pass
 
     for link_text in link_texts:
         try:
