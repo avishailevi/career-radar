@@ -50,6 +50,7 @@ def main():
         print(f"\nCompany: {job['company']}")
         print(f"Title: {job['title']}")
         print(f"Matched: {job['matched_keyword']}")
+        print(f"Location: {job.get('matched_location', 'Unknown')}")
         print(f"URL: {job['url']}")
 
 
