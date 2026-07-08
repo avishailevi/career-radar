@@ -53,7 +53,7 @@ Matched location, אם זמין
 סטטוס נוכחי
 
 הפרויקט כבר עבר ל-GitHub.
-main.py מריץ סריקה לכל החברות או לחברה אחת לפי ארגומנט.
+main.py מריץ סריקה לכל החברות, לחברה אחת, או לכמה חברות בפקודה אחת.
 main.py מציג Company, Title, Matched keyword, Matched location ו-URL.
 ScannerFactory בוחר סורק לפי platform מתוך mapping מפורש.
 scanner.py הוא עדיין מנוע הסריקה המרכזי בפועל.
@@ -99,15 +99,22 @@ Elbit – Partial – uses GenericScanner; needs real job page verification.
 
 Current next step
 
-להמשיך חברה-חברה לפי המטריצה, ולהעביר חברות מ-Partial ל-Supported רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
+להמשיך ב-batches של כמה חברות במצב Partial, ולהעביר חברות ל-Supported רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
 
 עדיפות עבודה:
 
 1. להריץ regression על חברות שכבר נחשבות נתמכות: NVIDIA, Apple, Intel, Microsoft.
-2. לבחור את החברה הבאה במצב Partial ולטפל בה.
+2. להריץ batch ראשון על כמה חברות Partial יחד.
 3. אם הבעיה שייכת לפלטפורמה שלמה, לפתור ברמת הפלטפורמה ולא ברמת החברה.
 4. להוסיף לוגיקה ייעודית בתוך מחלקת הסורק המתאימה, ולא בתוך main.py.
 5. לעדכן את המטריצה במסמך אחרי כל חברה שמסתיימת.
+
+הרצת כמה חברות במכה:
+
+python main.py Broadcom Google Amazon Marvell
+python main.py Qualcomm Cadence Synopsys Mobileye
+python main.py Nuvoton KLA Nova SolarEdge
+python main.py Rafael IAI Elbit
 
 ארכיטקטורה נוכחית
 
@@ -230,3 +237,4 @@ Change Log
 - נוספו Definition of Done, Regression checklist ו-Roadmap.
 - ScannerFactory עודכן לעבוד עם mapping מפורש לפי פלטפורמה.
 - נוספו סורקים מפורשים ל-Generic, Apple, Microsoft, Google ו-Amazon.
+- main.py עודכן לתמוך בהרצת כמה חברות בפקודה אחת.
