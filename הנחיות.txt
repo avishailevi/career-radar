@@ -2,43 +2,9 @@ Career Radar – Project Instructions
 
 אני בונה פרויקט Python בשם Career Radar.
 
-המטרה היא לבנות מערכת שמוצאת עבורי משרות חדשות מחברות רלוונטיות בתחום החומרה והשבבים.
+GitHub הוא מקור האמת של הפרויקט.
 
-המטרה הנוכחית
-
-המטרה הנוכחית היא לייצר כניסה אמיתית למשרות בכל החברות.
-
-כלומר: לא מספיק למצוא קישור שנראה כמו משרה, ולא מספיק לספור Job-like URLs.
-המערכת צריכה להגיע בפועל לדפי המשרות האמיתיים, לקרוא את התוכן שלהם, ולהחזיר רק משרות רלוונטיות לפי תחום ומיקום.
-
-היעד המעשי כרגע:
-
-1. לכל חברה ברשימה לוודא שהסורק מצליח להגיע לעמודי המשרות עצמם.
-2. לחלץ מכל משרה לפחות:
-
-Company
-Title
-URL
-Matched keyword
-Matched location, אם זמין
-
-3. לוודא שהסינון נעשה לפי תוכן המשרה האמיתי ולא רק לפי טקסט הקישור.
-4. לטפל בכל חברה שלא מאפשרת כניסה אמיתית לדפי המשרות שלה.
-5. רק אחרי שכל החברות המרכזיות נכנסות לדפי משרות אמיתיים, לעבור לשיפור UX או פיצ׳רים עתידיים.
-
-כרגע אין צורך ב:
-
-AI
-Dashboard
-הגשות אוטומטיות
-Telegram
-התראות
-
-קודם בונים מערכת יציבה שעובדת ונכנסת באמת למשרות.
-
-סטטוס נוכחי של הפרויקט
-
-הריפו הפעיל:
+הריפו הראשי:
 
 avishailevi/career-radar
 
@@ -46,199 +12,190 @@ avishailevi/career-radar
 
 main
 
-נקודת ההמשך הנוכחית:
-
-הפרויקט כבר עבר ל-GitHub, ולכן אין לבקש ממני להעתיק קבצים או להעלות קבצים מחדש אם יש גישה לריפו.
-
-המבנה הנוכחי כולל לפחות את הקבצים המרכזיים האלה:
-
-main.py
-companies.py
-keywords.py
-scanner.py
-scanners/scanner_factory.py
-scanners/workday_scanner.py
-requirements.txt
-
-מצב הקוד הנוכחי:
-
-main.py מריץ סריקה לפי כל החברות או לפי שם חברה שמועבר כארגומנט.
-ScannerFactory בוחר סורק לפי platform.
-WorkdayScanner קיים, אבל כרגע הוא רק עוטף את scan_company הכללי.
-scanner.py הוא עדיין הסורק המרכזי בפועל.
-DEBUG=True כרגע, כדי לראות למה חברות לא מחזירות תוצאות.
-companies.py מכיל את רשימת החברות הנוכחית, כולל NVIDIA, Apple, Broadcom, Intel, Microsoft, Google, Amazon, Qualcomm, Marvell, Cadence, Synopsys, Mobileye, Nuvoton, Tower Semiconductor, Applied Materials, KLA, Nova, SolarEdge, Rafael, Israel Aerospace Industries, Elbit.
-keywords.py מכיל מילות חיפוש לתפקידי חומרה, שבבים, וריפיקציה, Board Design, Embedded, Integration וכו׳.
-
-מה כבר עובד לפי ההקשר הקודם:
-
-הרצה כללית של python main.py עובדת ומחזירה לפחות חלק מהמשרות הרלוונטיות.
-נמצאו בעבר תוצאות רלוונטיות מ-NVIDIA ומ-Apple.
-המערכת כבר יודעת לסרוק כמה חברות ברצף ולהדפיס Relevant jobs found.
-נוסף מנגנון Debug שמציג Page URL, Page title, Total links, Usable links, Job-like URLs, Location matches, Keyword matches, Relevant jobs ודוגמאות קישורים.
-
-בעיות פתוחות לפי ההקשר הקודם:
-
-הבעיה המרכזית כרגע אינה רק “למצוא משרות”, אלא לוודא כניסה אמיתית לדפי המשרות בכל חברה.
-כל חברה צריכה להיבדק לפי השאלה:
-
-האם הסורק נכנס לעמוד משרה אמיתי וקורא את התוכן שלו?
-
-Intel:
-
-בעבר Intel לא החזירה משרות רלוונטיות.
-הבעיה שנראתה: נמצאו Job-like URLs אבל לא נמצאו Location matches או Keyword matches, כנראה בגלל אופן טעינת/סינון Workday או בגלל שהטקסט הדרוש נמצא בדפי הפרטים ולא בדף הרשימה.
-יש URL מעודכן ב-companies.py שמכוון ל-Workday עם location filters בישראל.
-השלב הבא הוא לבדוק את Intel עם:
-
-python main.py Intel
-
-ולתקן את מה שמונע כניסה אמיתית לדפי המשרות של Intel וחילוץ תוכן המשרה.
-
-Microsoft:
-
-בעבר Microsoft כן הציגה קישורי משרות, למשל Security Research Intern, Software Engineer - Fabric Platform, E2E Program Manager.
-הבעיה שנראתה: היו Location matches אבל Keyword matches נשאר 0, ולכן Relevant jobs היה 0.
-הסורק הכללי מוגדר לקרוא דפי פרטים עבור platform=microsoft, ולכן אם עדיין אין התאמות צריך לבדוק האם דפי הפרטים נטענים, האם הטקסט מכיל מילות מפתח, או האם צריך להוסיף מילות מפתח מדויקות יותר.
-השלב הבא הוא לבדוק את Microsoft עם:
-
-python main.py Microsoft
-
-ולתקן את מה שמונע כניסה אמיתית לדפי המשרות של Microsoft וחילוץ תוכן המשרה.
-
-עדיפות עבודה כרגע:
-
-1. לבדוק את מצב הריפו וה-branch לפני כל שינוי.
-2. לוודא כניסה אמיתית לדפי משרות, לא רק זיהוי קישורים.
-3. לתקן קודם את Intel.
-4. לתקן אחר כך את Microsoft.
-5. לעבור חברה-חברה ולוודא שכל אחת מחזירה משרות אמיתיות או Debug ברור למה לא.
-6. להריץ בדיקות נקודתיות:
-
-python main.py Intel
-python main.py Microsoft
-
-7. רק לאחר מכן להריץ:
-
-python main.py
-
-8. לא להוסיף פיצ׳רים חדשים לפני שהכניסה לדפי המשרות בכל החברות המרכזיות יציבה.
-
-שיטת העבודה
-
-עבוד איתי כמו Senior Software Engineer / Tech Lead שמוביל את הפרויקט.
-
-המטרה היא לקדם את הפרויקט בצורה יציבה, פשוטה וניתנת לתחזוקה.
-
-אל תציע פיצ'רים חדשים אלא אם:
-
-יש באג
-יש בעיית ארכיטקטורה
-יש דרך פשוטה משמעותית
-
-אם אין סיבה טובה — נשארים עם התכנון הקיים.
-
-GitHub הוא מקור האמת
-
-הפרויקט מנוהל ב-GitHub.
-
-הריפו הראשי:
-
-avishailevi/career-radar
-
-GitHub הוא ה-Source of Truth של הפרויקט.
-
-כאשר יש חיבור פעיל ל-GitHub:
+כאשר יש גישה ל-GitHub:
 
 קרא את הקוד ישירות מהריפו.
-אל תניח שהקבצים המקומיים הם הגרסה העדכנית.
 אל תבקש ממני להעלות קבצים שכבר קיימים בריפו.
-אל תבקש ממני להעתיק קוד מהצ'אט אם ניתן לעדכן אותו ישירות בריפו.
-קרא את מצב ה-main, ה-branch וה-PR הרלוונטיים לפני שאתה מציע שינויים.
-בצע שינויים ישירות בריפו כאשר ביקשתי ממך לשנות קוד או מסמכים.
+אל תבקש ממני להעתיק קוד אם ניתן לעדכן אותו ישירות בריפו.
+בדוק את מצב ה-main, ה-branch וה-PR לפני שינוי.
+בצע שינויים ישירות בריפו כאשר אני מבקש לשנות קוד או מסמכים.
 עדכן רק את הקבצים הנדרשים.
 בצע Commit עם הודעה קצרה וברורה.
-אם עובדים עם Branch, המשך לעבוד על אותו Branch אלא אם התבקש אחרת.
-אם אינך מצליח לגשת לריפו, אמור זאת במפורש והסבר מה חסר במקום לנחש.
 
-כאשר אני כותב "המשך"
+כאשר אני כותב "המשך":
 
 אין להתחיל מחדש.
 אין לשכתב את הפרויקט.
 אין לבקש ממני שוב קבצים שכבר נמצאים ב-GitHub.
+קודם בדוק את מצב הריפו ואז המשך מהמקום שבו עצרנו.
 
-קודם בדוק:
+המטרה הנוכחית
 
-מהו ה-branch הפעיל או הרלוונטי.
-מהו ה-commit האחרון.
-מהו ה-PR האחרון, אם קיים.
-מה מצב הקוד בריפו.
+המטרה הנוכחית היא להגיע לכיסוי מלא של כל החברות ברשימה.
 
-רק לאחר מכן המשך בדיוק מהמקום שבו עצרנו.
+המערכת צריכה להיכנס בפועל לדפי המשרות האמיתיים בכל חברה, לקרוא את תוכן המשרה, ולסנן רק משרות רלוונטיות לפי תחום ומיקום.
 
-לפני כל שינוי
+לא מספיק:
 
-כתוב:
+למצוא לינקים בלבד.
+להציג Job-like URLs בלבד.
+להסתמך רק על כותרת הקישור.
+להחזיר תוצאה בלי לוודא שנקרא דף משרה אמיתי.
 
-מטרת השינוי
+מכל משרה רלוונטית יש לחלץ לפחות:
 
-במשפט אחד.
+Company
+Title
+URL
+Matched keyword
+Matched location, אם זמין
 
-אחרי כל שינוי
+סטטוס נוכחי
 
-דווח בקצרה:
+הפרויקט כבר עבר ל-GitHub.
+main.py מריץ סריקה לכל החברות או לחברה אחת לפי ארגומנט.
+ScannerFactory בוחר סורק לפי platform.
+scanner.py הוא עדיין מנוע הסריקה המרכזי בפועל.
+WorkdayScanner קיים אך כרגע עוטף את scan_company.
+DEBUG=True כרגע כדי להבין למה חברות לא מחזירות תוצאות.
 
-Changed files
+השלב הנוכחי הוא לא להוסיף פיצ׳רים חדשים, אלא לייצב כיסוי אמיתי של חברות ופלטפורמות.
 
-רשימת הקבצים שבאמת השתנו בלבד.
+מטריצת סטטוס חברות
 
-Commit
+יש לעדכן את המטריצה אחרי כל טיפול משמעותי בחברה.
 
-שם/הודעת ה-Commit או SHA אם קיים.
+Status values:
 
-Run
+✅ Supported – הסורק נכנס לדפי משרות אמיתיים, קורא תוכן, ומחזיר משרות רלוונטיות.
+🟡 Partial – הסורק מוצא קישורים או חלק מהמידע, אבל הכניסה/החילוץ/הסינון עדיין לא אמינים.
+❌ Unsupported – אין עדיין תמיכה אמינה או שנדרש סורק ייעודי.
 
-הפקודה שאני צריך להריץ, לדוגמה:
+Current matrix:
+
+NVIDIA – ✅ Supported – Workday / worked in previous runs.
+Apple – ✅ Supported – Apple careers / worked in previous runs.
+Broadcom – 🟡 Partial – needs real job page verification.
+Intel – ✅ Supported – treated previously; re-test during regression.
+Microsoft – ✅ Supported – treated previously; re-test during regression.
+Google – 🟡 Partial – needs real job page verification.
+Amazon – 🟡 Partial – needs real job page verification.
+Qualcomm – 🟡 Partial – needs real job page verification.
+Marvell – 🟡 Partial – needs real job page verification.
+Cadence – 🟡 Partial – needs real job page verification.
+Synopsys – 🟡 Partial – needs real job page verification.
+Tower Semiconductor – 🟡 Partial – needs real job page verification.
+Mobileye – 🟡 Partial – needs real job page verification.
+Nuvoton – 🟡 Partial – needs real job page verification.
+Applied Materials – 🟡 Partial – needs real job page verification.
+KLA – 🟡 Partial – needs real job page verification.
+Nova – 🟡 Partial – needs real job page verification.
+SolarEdge – 🟡 Partial – needs real job page verification.
+Rafael – 🟡 Partial – needs real job page verification.
+IAI – 🟡 Partial – needs real job page verification.
+Elbit – 🟡 Partial – needs real job page verification.
+
+Current next step
+
+להמשיך חברה-חברה לפי המטריצה, ולהעביר חברות מ-🟡 ל-✅ רק לאחר בדיקה שהסורק נכנס לדף משרה אמיתי וקורא את תוכן המשרה.
+
+עדיפות עבודה:
+
+1. לוודא שהפלט של המערכת כולל גם matched location כאשר נמצא.
+2. להריץ regression על חברות שכבר נחשבות נתמכות: NVIDIA, Apple, Intel, Microsoft.
+3. לבחור את החברה הבאה במצב 🟡 ולטפל בה.
+4. אם הבעיה שייכת לפלטפורמה שלמה, לפתור ברמת הפלטפורמה ולא ברמת החברה.
+5. לעדכן את המטריצה במסמך אחרי כל חברה שמסתיימת.
+
+ארכיטקטורה נוכחית
+
+main.py
+    ↓
+ScannerFactory
+    ↓
+Scanner לפי platform
+    ↓
+Playwright
+    ↓
+חילוץ קישורים ודפי משרה
+    ↓
+Keyword + Location Filter
+    ↓
+Relevant Jobs
+
+פלטפורמות
+
+Workday – בשימוש אצל NVIDIA, Intel, Broadcom, Marvell ועוד. רצוי לפתור בעיות ברמת WorkdayScanner.
+Apple – Apple careers.
+Microsoft – Microsoft R&D Israel careers.
+Generic / Custom – ברירת מחדל לחברות שאין להן עדיין סורק ייעודי.
+
+בעתיד ייתכן שיהיה צורך להוסיף סורקים ייעודיים לפלטפורמות כמו Greenhouse, Lever, SAP SuccessFactors, Oracle, SmartRecruiters.
+
+Definition of Done לחברה
+
+חברה נחשבת ✅ רק אם:
+
+הסורק פותח את אתר הקריירה שלה.
+הסורק מגיע לדף משרה אמיתי.
+הסורק קורא את תוכן המשרה בפועל.
+הסורק מחלץ Title ו-URL.
+הסורק מזהה Location כאשר קיים.
+הסורק מזהה Keyword רלוונטי כאשר קיים.
+המשרה מופיעה תחת Relevant jobs found.
+אין Exception בהרצה נקודתית של החברה.
+
+Regression checklist
+
+אחרי כל שינוי משמעותי יש להריץ לפחות:
+
+python main.py NVIDIA
+python main.py Apple
+python main.py Intel
+python main.py Microsoft
+
+ולאחר מכן, כאשר השינוי נראה תקין:
 
 python main.py
 
-Expected Output
+אם חברה שכבר עבדה נשברת, קודם מתקנים את הרגרסיה ורק אחר כך ממשיכים.
 
-תאר בדיוק מה אני אמור לראות.
+Definition of Success ל-v0.1
 
-אם נדרש ממני לבצע פעולה מקומית, למשל git pull, הרצת בדיקה או פתיחת Pull Request, כתוב זאת במפורש.
+v0.1 תיחשב יציבה כאשר:
 
-עבודה עם קוד
+כל החברות המרכזיות ברשימה הן ✅ או שיש סיבה מתועדת וברורה למה לא.
+אין קריסות בהרצה מלאה.
+כל משרה שמוחזרת מגיעה מדף משרה אמיתי.
+אין False Positives ידועים.
+הפלט כולל Company, Title, URL, Matched keyword ו-Matched location כאשר זמין.
 
-כאשר יש גישה ל-GitHub, אין צורך לשלוח לי קבצים מלאים בצ'אט.
+מה לא עושים עכשיו
 
-במקום זה:
+לא מוסיפים AI.
+לא מוסיפים Dashboard.
+לא מוסיפים Telegram.
+לא מוסיפים התראות.
+לא מוסיפים Auto Apply.
+לא עושים Refactor גדול באמצע תיקון חברה.
+לא כותבים סורק ייעודי לחברה אם ניתן לפתור את הבעיה ברמת הפלטפורמה.
+לא משנים ארכיטקטורה כדי לפתור באג נקודתי בלי אישור.
 
-קרא את הקבצים מהריפו.
-שנה אותם ישירות ב-GitHub.
-בצע Commit.
-דווח מה השתנה ואיך לבדוק.
+עקרונות פיתוח
 
-רק אם אין גישה ל-GitHub, או אם ביקשתי במפורש לראות קובץ, שלח קובץ מלא בלבד ולא קטעי קוד.
-
-סדר העבודה
-
+עבוד כמו Senior Software Engineer / Tech Lead.
+העדף שינוי קטן וברור על פני שינוי גדול.
+העדף פתרון ברמת platform על פני hack לחברה בודדת.
 כל גרסה חייבת לעבוד.
+כל שינוי חייב להיות ניתן לבדיקה.
+כל שינוי משמעותי צריך לעדכן את המסמך הזה.
 
-אם משהו נשבר:
+אחרי כל שינוי דווח בקצרה:
 
-קודם מתקנים.
-רק אחר כך ממשיכים.
-
-לא משנים ארכיטקטורה באמצע.
-לא עושים Refactor גדול באמצע פיתוח.
-לא משנים קוד שעובד רק כדי "לשפר אותו".
-
-אם לדעתך צריך לשנות ארכיטקטורה:
-
-אל תשנה אותה מיד.
-קודם הסבר בקצרה למה.
-חכה לאישור שלי.
+Changed files
+Commit
+Run
+Expected Output
 
 טכנולוגיות
 
@@ -246,7 +203,7 @@ Python
 Playwright
 Requests
 BeautifulSoup
-SQLite
+SQLite בעתיד
 Git
 GitHub
 
@@ -259,96 +216,17 @@ Type hints כשצריך
 בלי קוד כפול
 בלי קוד לא בשימוש
 
-מטרת v0.1
+Roadmap
 
-לייצר כניסה אמיתית לדפי משרות בכל החברות המרכזיות, לקרוא את תוכן המשרה בפועל, ולמצוא מתוכן רק משרות רלוונטיות.
+v0.1 – כיסוי מלא של חברות וכניסה אמיתית לדפי משרות.
+v0.2 – שמירת תוצאות והשוואה להרצות קודמות.
+v0.3 – התראות על משרות חדשות.
+v1.0 – מערכת יציבה שרצה אוטומטית ומדווחת רק על משרות חדשות ורלוונטיות.
 
-לא מספיק:
+Change Log
 
-למצוא לינקים בלבד
-להציג Job-like URLs בלבד
-להסתמך רק על כותרת הקישור
-להחזיר תוצאה בלי לוודא שנקרא דף משרה אמיתי
-
-בלי AI.
-בלי Dashboard.
-בלי Telegram.
-בלי התראות.
-בלי Auto Apply.
-
-חברות
-
-NVIDIA
-Apple
-Broadcom
-Intel
-Microsoft
-Google
-Amazon
-Qualcomm
-Marvell
-Cadence
-Synopsys
-Tower
-Mobileye
-Nuvoton
-Applied Materials
-KLA
-Nova
-SolarEdge
-Rafael
-IAI
-Elbit
-
-ועוד חברות רלוונטיות שנוסיף בהמשך.
-
-תחומי חיפוש
-
-Physical Design
-ASIC
-RTL
-FPGA
-Verification
-Board Design
-Hardware
-Electrical Engineering
-Embedded
-System Integration
-VLSI
-
-עקרונות עבודה
-
-תמיד העדף:
-
-קוד פשוט
-קוד קריא
-קוד שניתן לתחזוקה
-שינוי קטן על פני שינוי גדול
-תיקון נקודתי על פני שכתוב
-
-אם חסר מידע
-
-אם חסר מידע כדי להמשיך:
-
-שאל שאלה אחת ממוקדת.
-אל תנחש.
-אל תמציא קבצים.
-אל תמציא קוד.
-אל תמציא Commitים.
-אל תמציא Branches.
-אל תמציא Pull Requests.
-אל תמציא החלטות ארכיטקטורה.
-
-כלל הזהב
-
-המטרה היא לבנות מערכת אמינה בהדרגה.
-
-כל שינוי צריך להיות:
-
-קטן
-ברור
-ניתן לבדיקה
-ניתן לשחזור
-ניתן לחזרה באמצעות Git
-
-אם יש ספק — קודם בודקים את מצב הפרויקט ב-GitHub ורק אחר כך כותבים קוד.
+2026-07-08
+- GitHub הוגדר כמקור האמת.
+- מטרת הפרויקט עודכנה לכיסוי מלא וכניסה אמיתית לדפי משרות.
+- נוספה מטריצת סטטוס חברות.
+- נוספו Definition of Done, Regression checklist ו-Roadmap.
