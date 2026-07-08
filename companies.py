@@ -52,7 +52,7 @@ companies = [
     {
         "name": "Synopsys",
         "platform": "custom",
-        "url": "https://www.synopsys.com/company/careers.html",
+        "url": "https://careers.synopsys.com/",
     },
     {
         "name": "Mobileye",
