@@ -34,6 +34,7 @@ locations = [
     "Herzliya",
     "Jerusalem",
     "Yokneam",
+    "Migdal Haemek",
     "Ra'anana",
     "Petah Tikva",
     "Netanya"

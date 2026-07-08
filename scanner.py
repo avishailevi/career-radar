@@ -1,132 +1,24 @@
-import re
 from urllib.parse import urljoin
 
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
-from keywords import keywords, locations
-
-
-BAD_TITLES = [
-    "see full role description",
-    "products",
-    "accessibility",
-    "privacy",
-    "contact us",
-    "instagram",
-    "application status",
-    "sustainability",
-    "united states",
-    "standards of business conduct",
-]
-
-
-JOB_URL_HINTS = [
-    "/job/",
-    "/jobs/",
-    "/careers/job",
-    "jobid",
-    "job_id",
-    "job-",
-    "jobdetails?jobseqno",
-    "jobs.apple.com",
-    "workdayjobs.com",
-]
-
-
-POSSIBLE_JOB_TEXT_HINTS = [
-    "engineer",
-    "developer",
-    "architect",
-    "manager",
-    "lead",
-    "specialist",
-    "intern",
-    "student",
-    "researcher",
-    "software",
-    "hardware",
-    "silicon",
-    "verification",
-    "validation",
-    "embedded",
-    "fpga",
-    "asic",
-    "rtl",
-    "physical design",
-    "board",
-]
-
-
-BAD_URL_PARTS = [
-    "instagram.com",
-    "facebook.com",
-    "linkedin.com",
-    "youtube.com",
-    "mailto:",
-    "/products/",
-    "/support/",
-    "/training/",
-    "/solutions/",
-    "/applications/",
-    "/sustainability",
-    "/environmental-social",
-    "/corporate-responsibility",
-]
-
-
-DETAIL_TEXT_PLATFORMS = {
-    "microsoft",
-    "workday",
-}
+from services.filter_service import POSSIBLE_JOB_TEXT_HINTS
+from services.filter_service import find_matching_keyword
+from services.filter_service import find_matching_location
+from services.filter_service import get_job_key
+from services.filter_service import get_title_from_url
+from services.filter_service import is_identifier_title
+from services.filter_service import is_bad_title
+from services.filter_service import is_bad_url
+from services.filter_service import is_job_list_url
+from services.filter_service import is_job_url
+from services.filter_service import is_possible_job_link
+from services.platform_service import should_follow_job_list_link
+from services.platform_service import should_read_detail_pages
 
 DEBUG_SAMPLE_LIMIT = 5
-
-
-def is_bad_title(title: str) -> bool:
-    title_lower = title.lower()
-    return any(bad in title_lower for bad in BAD_TITLES)
-
-
-def is_bad_url(url: str) -> bool:
-    url_lower = url.lower()
-    return any(bad in url_lower for bad in BAD_URL_PARTS)
-
-
-def is_job_url(url: str) -> bool:
-    url_lower = url.lower()
-    return any(hint in url_lower for hint in JOB_URL_HINTS)
-
-
-def is_possible_job_link(title: str, url: str) -> bool:
-    text = f"{title} {url}".lower()
-    return any(hint in text for hint in POSSIBLE_JOB_TEXT_HINTS)
-
-
-def keyword_matches(keyword: str, text: str) -> bool:
-    pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
-    return re.search(pattern, text.lower()) is not None
-
-
-def location_matches(location: str, text: str) -> bool:
-    pattern = r"\b" + re.escape(location.lower()) + r"\b"
-    return re.search(pattern, text.lower()) is not None
-
-
-def find_matching_keyword(text: str) -> str | None:
-    for keyword in keywords:
-        if keyword_matches(keyword, text):
-            return keyword
-
-    return None
-
-
-def find_matching_location(text: str) -> str | None:
-    for location in locations:
-        if location_matches(location, text):
-            return location
-
-    return None
+JOB_CARD_CONTEXT_LINES = 6
 
 
 def add_debug_sample(samples: list[dict], sample: dict) -> None:
@@ -151,8 +43,61 @@ def get_matching_text_lines(page_text: str) -> list[str]:
     return matching_lines
 
 
-def should_read_detail_pages(company: dict) -> bool:
-    return company.get("platform") in DETAIL_TEXT_PLATFORMS
+def get_job_card_text(page_text: str, title: str) -> str:
+    clean_lines = [
+        line.strip()
+        for line in page_text.splitlines()
+        if line.strip()
+    ]
+
+    title_lower = title.lower()
+
+    for index, line in enumerate(clean_lines):
+        if title_lower in line.lower():
+            if "\t" in line:
+                return line
+
+            end_index = index + JOB_CARD_CONTEXT_LINES
+            return " ".join(clean_lines[index:end_index])
+
+    return ""
+
+
+def get_link_base_url(page) -> str:
+    try:
+        base = page.locator("base").first
+        if base.count() > 0:
+            base_href = base.get_attribute("href")
+            if base_href:
+                return base_href
+    except PlaywrightError:
+        pass
+
+    return page.url
+
+
+def get_job_list_link(page, link_texts: list[str]):
+    links = page.locator("a").all()
+
+    for link in links:
+        try:
+            title = link.inner_text().strip()
+            href = link.get_attribute("href")
+
+            if not title or not href:
+                continue
+
+            if title not in link_texts:
+                continue
+
+            full_url = urljoin(get_link_base_url(page), href)
+            if is_job_url(full_url) or is_job_list_url(full_url):
+                return link, href, title
+
+        except PlaywrightError:
+            continue
+
+    return None, None, None
 
 
 def get_job_detail_text(context, url: str) -> str:
@@ -172,7 +117,7 @@ def get_job_detail_text(context, url: str) -> str:
             pass
 
         detail_page.wait_for_timeout(2000)
-        return detail_page.locator("body").inner_text(timeout=10000)
+        return detail_page.locator("body").inner_text(timeout=10000).strip()
 
     except PlaywrightError:
         return ""
@@ -194,13 +139,42 @@ def try_follow_job_list_link(page) -> str | None:
         "Jobs",
     ]
 
+    job_link, job_href, job_title = get_job_list_link(page, link_texts)
+    if job_link and job_href and job_title:
+        try:
+            page.goto(
+                urljoin(get_link_base_url(page), job_href),
+                wait_until="domcontentloaded",
+                timeout=30000,
+            )
+
+            try:
+                page.wait_for_load_state("networkidle", timeout=30000)
+            except PlaywrightError:
+                pass
+
+            page.wait_for_timeout(3000)
+            return job_title
+
+        except PlaywrightError:
+            pass
+
     for link_text in link_texts:
         try:
             link = page.get_by_role("link", name=link_text).first
             if link.count() == 0:
                 continue
 
-            link.click()
+            href = link.get_attribute("href")
+            if href:
+                page.goto(
+                    urljoin(page.url, href),
+                    wait_until="domcontentloaded",
+                    timeout=30000,
+                )
+            else:
+                link.click()
+
             page.wait_for_load_state("domcontentloaded", timeout=30000)
 
             try:
@@ -220,6 +194,7 @@ def try_follow_job_list_link(page) -> str | None:
 def scan_company(company: dict, debug: bool = False) -> list[dict]:
     relevant_jobs = []
     seen_urls = set()
+    seen_jobs = set()
 
     total_links = 0
     usable_links = 0
@@ -228,11 +203,15 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     job_url_count = 0
     location_match_count = 0
     keyword_match_count = 0
+    duplicate_job_count = 0
     detail_page_count = 0
+    empty_detail_page_count = 0
+    page_text_fallback_count = 0
     detail_keyword_match_count = 0
     page_url = ""
     page_title = ""
     page_text = ""
+    link_base_url = ""
     followed_link_text = None
     read_detail_pages = should_read_detail_pages(company)
 
@@ -247,6 +226,9 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         page = browser.new_page()
 
         print(f"\nScanning {company['name']}...")
+        if debug:
+            print(f"  Platform: {company.get('platform')}")
+            print(f"  Read detail pages: {read_detail_pages}")
 
         try:
             page.goto(
@@ -266,7 +248,8 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
         page.wait_for_timeout(5000)
 
-        followed_link_text = try_follow_job_list_link(page)
+        if should_follow_job_list_link(company):
+            followed_link_text = try_follow_job_list_link(page)
 
         page_url = page.url
 
@@ -280,6 +263,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         except PlaywrightError:
             page_text = ""
 
+        link_base_url = get_link_base_url(page)
         links = page.locator("a").all()
         total_links = len(links)
 
@@ -288,11 +272,18 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 title = link.inner_text().strip()
                 href = link.get_attribute("href")
 
-                if not title or not href:
+                if not href:
                     continue
 
                 usable_links += 1
-                full_url = urljoin(company["url"], href)
+                full_url = urljoin(link_base_url, href)
+                if not title or is_identifier_title(title):
+                    title_from_url = get_title_from_url(full_url)
+                    if title_from_url:
+                        title = title_from_url
+
+                if not title:
+                    continue
 
                 add_debug_sample(
                     usable_link_samples,
@@ -329,7 +320,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 job_url_count += 1
                 text_to_check = f"{title} {full_url}"
-                detail_text_checked = False
+                matched_from_detail = False
 
                 add_debug_sample(
                     job_url_samples,
@@ -340,12 +331,19 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 )
 
                 if read_detail_pages:
+                    detail_page_count += 1
                     detail_text = get_job_detail_text(page.context, full_url)
 
                     if detail_text:
-                        detail_page_count += 1
-                        detail_text_checked = True
+                        matched_from_detail = True
                         text_to_check = f"{text_to_check} {detail_text}"
+                    else:
+                        empty_detail_page_count += 1
+                        card_text = get_job_card_text(page_text, title)
+
+                        if card_text:
+                            page_text_fallback_count += 1
+                            text_to_check = f"{text_to_check} {card_text}"
 
                 matched_location = find_matching_location(text_to_check)
 
@@ -368,9 +366,20 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 if not matched_keyword:
                     continue
 
+                job_key = get_job_key(
+                    company["name"],
+                    title,
+                    matched_location,
+                )
+
+                if job_key in seen_jobs:
+                    duplicate_job_count += 1
+                    continue
+
+                seen_jobs.add(job_key)
                 keyword_match_count += 1
 
-                if detail_text_checked:
+                if matched_from_detail:
                     detail_keyword_match_count += 1
 
                 add_debug_sample(
@@ -412,9 +421,12 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         print(f"  Bad URLs filtered: {bad_url_count}")
         print(f"  Job-like URLs: {job_url_count}")
         print(f"  Location matches: {location_match_count}")
+        print(f"  Duplicate jobs filtered: {duplicate_job_count}")
 
         if read_detail_pages:
             print(f"  Detail pages checked: {detail_page_count}")
+            print(f"  Empty detail pages: {empty_detail_page_count}")
+            print(f"  Page text fallbacks: {page_text_fallback_count}")
             print(f"  Detail keyword matches: {detail_keyword_match_count}")
 
         print(f"  Keyword matches: {keyword_match_count}")

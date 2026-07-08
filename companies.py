@@ -32,7 +32,7 @@ companies = [
     {
         "name": "Amazon",
         "platform": "amazon",
-        "url": "https://www.amazon.jobs/en/locations/israel",
+        "url": "https://www.amazon.jobs/en/search?country%5B%5D=ISR",
     },
     {
         "name": "Qualcomm",
@@ -52,11 +52,11 @@ companies = [
     {
         "name": "Synopsys",
         "platform": "custom",
-        "url": "https://www.synopsys.com/company/careers.html",
+        "url": "https://careers.synopsys.com/",
     },
     {
         "name": "Mobileye",
-        "platform": "custom",
+        "platform": "mobileye",
         "url": "https://www.mobileye.com/careers/",
     },
     {
@@ -66,8 +66,8 @@ companies = [
     },
     {
         "name": "Tower Semiconductor",
-        "platform": "custom",
-        "url": "https://towersemi.com/",
+        "platform": "tower",
+        "url": "https://careers.towersemi.com/career-opportunities/engineering/",
     },
     {
         "name": "Applied Materials",

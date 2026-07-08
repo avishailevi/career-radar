@@ -7,6 +7,13 @@ from scanners.scanner_factory import ScannerFactory
 DEBUG = True
 
 
+def configure_output_encoding() -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except AttributeError:
+        pass
+
+
 def get_requested_company_names() -> list[str]:
     requested_names = []
 
@@ -38,8 +45,10 @@ def get_companies_to_scan():
 
 
 def main():
+    configure_output_encoding()
+
     print("=" * 50)
-    print("🤖 Career Hunter AI")
+    print("Career Radar")
     print("=" * 50)
 
     companies_to_scan = get_companies_to_scan()
