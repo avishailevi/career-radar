@@ -75,6 +75,10 @@ BAD_URL_PARTS = [
 ]
 
 
+DETAIL_TEXT_PLATFORMS = {
+    "microsoft",
+}
+
 DEBUG_SAMPLE_LIMIT = 5
 
 
@@ -146,6 +150,40 @@ def get_matching_text_lines(page_text: str) -> list[str]:
     return matching_lines
 
 
+def should_read_detail_pages(company: dict) -> bool:
+    return company.get("platform") in DETAIL_TEXT_PLATFORMS
+
+
+def get_job_detail_text(context, url: str) -> str:
+    detail_page = None
+
+    try:
+        detail_page = context.new_page()
+        detail_page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=45000,
+        )
+
+        try:
+            detail_page.wait_for_load_state("networkidle", timeout=15000)
+        except PlaywrightError:
+            pass
+
+        detail_page.wait_for_timeout(2000)
+        return detail_page.locator("body").inner_text(timeout=10000)
+
+    except PlaywrightError:
+        return ""
+
+    finally:
+        if detail_page:
+            try:
+                detail_page.close()
+            except PlaywrightError:
+                pass
+
+
 def try_follow_job_list_link(page) -> str | None:
     link_texts = [
         "See all jobs",
@@ -189,10 +227,13 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     job_url_count = 0
     location_match_count = 0
     keyword_match_count = 0
+    detail_page_count = 0
+    detail_keyword_match_count = 0
     page_url = ""
     page_title = ""
     page_text = ""
     followed_link_text = None
+    read_detail_pages = should_read_detail_pages(company)
 
     usable_link_samples = []
     possible_job_link_samples = []
@@ -314,6 +355,17 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
                 matched_keyword = find_matching_keyword(text_to_check)
 
+                if not matched_keyword and read_detail_pages:
+                    detail_text = get_job_detail_text(page.context, full_url)
+
+                    if detail_text:
+                        detail_page_count += 1
+                        text_to_check = f"{text_to_check} {detail_text}"
+                        matched_keyword = find_matching_keyword(text_to_check)
+
+                        if matched_keyword:
+                            detail_keyword_match_count += 1
+
                 if not matched_keyword:
                     continue
 
@@ -357,6 +409,11 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         print(f"  Bad URLs filtered: {bad_url_count}")
         print(f"  Job-like URLs: {job_url_count}")
         print(f"  Location matches: {location_match_count}")
+
+        if read_detail_pages:
+            print(f"  Detail pages checked: {detail_page_count}")
+            print(f"  Detail keyword matches: {detail_keyword_match_count}")
+
         print(f"  Keyword matches: {keyword_match_count}")
         print(f"  Relevant jobs: {len(relevant_jobs)}")
 
