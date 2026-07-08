@@ -28,7 +28,8 @@ Already present:
 - Company list with platform metadata.
 - Generic scanner logic in `scanner.py`.
 - Scanner factory entry point.
-- Workday wrapper that currently delegates to the generic scanner.
+- Workday wrapper that currently delegates to the shared scanner implementation.
+- Generic scanner wrapper that delegates to the shared scanner implementation.
 - Filtering service extracted from `scanner.py`.
 - Documentation under `docs/`.
 
@@ -39,10 +40,8 @@ Known working companies from `docs/COMPANIES.md`:
 - Microsoft.
 
 Highest-priority next work:
-- Complete the current scanner-factory refactor without behavior changes.
-- Route generic companies through `GenericScanner`.
 - Keep Workday behavior stable while preparing for platform-specific scanner logic.
-- Then stabilize Workday-like companies.
+- Stabilize Workday-like companies.
 - Then stabilize Google.
 
 ## Later

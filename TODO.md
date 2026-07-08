@@ -2,15 +2,13 @@
 
 ## Current Priority
 
-- Finish the scanner-factory refactor safely.
-- Keep behavior unchanged while moving toward platform-based scanners.
+- Stabilize scanner behavior while keeping the platform-based structure small.
 
 ## Next Tasks
 
-- Implement `GenericScanner` as the default scanner wrapper.
-- Route non-Workday platforms through `GenericScanner` in `ScannerFactory`.
 - Validate syntax and imports after each change.
 - Keep `main.py` stable.
+- Review Workday-like company behavior next.
 
 ## Validation
 

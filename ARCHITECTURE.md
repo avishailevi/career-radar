@@ -12,7 +12,8 @@ main.py
   -> scanners/scanner_factory.py
       -> scanners/workday_scanner.py
           -> scanner.py
-      -> scanner.py
+      -> scanners/generic_scanner.py
+          -> scanner.py
   -> services/filter_service.py
   -> keywords.py
 ```
@@ -62,7 +63,7 @@ Routes companies by platform.
 
 Current behavior:
 - `workday` companies use `WorkdayScanner`.
-- Other companies currently use the shared scanner implementation.
+- Other companies use `GenericScanner`.
 
 ### `scanners/workday_scanner.py`
 
@@ -73,22 +74,14 @@ Current behavior:
 
 ### `scanners/generic_scanner.py`
 
-Currently empty.
+Default scanner wrapper.
 
-Intended near-term behavior:
-- Default scanner wrapper that delegates to `scanner.scan_company`.
+Current behavior:
+- Delegates to `scanner.scan_company`.
 
 ## Development Direction
 
 Move gradually from one shared scanner toward platform-based scanners, without breaking the stable v0.1 command-line scanner.
 
-Near-term target flow:
-
-```text
-main.py
-  -> scanners/scanner_factory.py
-      -> scanners/workday_scanner.py
-      -> scanners/generic_scanner.py
-  -> scanner.py
-  -> services/filter_service.py
-```
+Next architecture step:
+- Keep extracting platform-specific behavior only when a company/platform needs it.
