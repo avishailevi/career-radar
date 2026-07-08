@@ -102,7 +102,16 @@ def try_follow_job_list_link(page) -> str | None:
             if link.count() == 0:
                 continue
 
-            link.click()
+            href = link.get_attribute("href")
+            if href:
+                page.goto(
+                    urljoin(page.url, href),
+                    wait_until="domcontentloaded",
+                    timeout=30000,
+                )
+            else:
+                link.click()
+
             page.wait_for_load_state("domcontentloaded", timeout=30000)
 
             try:
@@ -202,7 +211,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     continue
 
                 usable_links += 1
-                full_url = urljoin(company["url"], href)
+                full_url = urljoin(page.url, href)
 
                 add_debug_sample(
                     usable_link_samples,
