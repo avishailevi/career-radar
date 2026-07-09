@@ -90,6 +90,23 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         dejobs_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_eightfold_platform_uses_eightfold_scanner(self):
+        company = {
+            "name": "Qualcomm",
+            "platform": "eightfold",
+            "url": "https://example.com",
+        }
+
+        eightfold_scanner_class = Mock()
+        eightfold_scanner = eightfold_scanner_class.return_value
+        eightfold_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"eightfold": eightfold_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        eightfold_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_synopsys_platform_uses_synopsys_scanner(self):
         company = {
             "name": "Synopsys",

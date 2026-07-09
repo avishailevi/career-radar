@@ -1,6 +1,7 @@
 from scanners.amazon_scanner import AmazonScanner
 from scanners.apple_scanner import AppleScanner
 from scanners.dejobs_scanner import DejobsScanner
+from scanners.eightfold_scanner import EightfoldScanner
 from scanners.generic_scanner import GenericScanner
 from scanners.google_scanner import GoogleScanner
 from scanners.microsoft_scanner import MicrosoftScanner
@@ -14,6 +15,7 @@ class ScannerFactory:
         "apple": AppleScanner,
         "custom": GenericScanner,
         "dejobs": DejobsScanner,
+        "eightfold": EightfoldScanner,
         "generic": GenericScanner,
         "google": GoogleScanner,
         "microsoft": MicrosoftScanner,

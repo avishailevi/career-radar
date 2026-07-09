@@ -36,8 +36,10 @@ companies = [
     },
     {
         "name": "Qualcomm",
-        "platform": "custom",
+        "platform": "eightfold",
         "url": "https://careers.qualcomm.com/",
+        "domain": "qualcomm.com",
+        "search_location": "Israel",
     },
     {
         "name": "Marvell",
