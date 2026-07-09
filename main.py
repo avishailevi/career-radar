@@ -1,10 +1,21 @@
 import sys
+import io
+import os
+from collections import defaultdict
+from contextlib import redirect_stdout
 
 from companies import companies
 from scanners.scanner_factory import ScannerFactory
+from services.email_service import send_email_digest
+from services.job_history_service import update_job_history
 
 
-DEBUG = True
+DEBUG = os.environ.get("CAREER_RADAR_DEBUG", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 def configure_output_encoding() -> None:
@@ -44,12 +55,68 @@ def get_companies_to_scan():
     return matching_companies
 
 
+def scan_company(company: dict) -> list[dict]:
+    if DEBUG:
+        return ScannerFactory.scan(company, debug=True)
+
+    with redirect_stdout(io.StringIO()):
+        return ScannerFactory.scan(company, debug=False)
+
+
+def group_jobs_by_company(jobs: list[dict]) -> dict:
+    grouped_jobs = defaultdict(list)
+
+    for job in jobs:
+        grouped_jobs[job["company"]].append(job)
+
+    return dict(sorted(grouped_jobs.items()))
+
+
+def print_daily_summary(
+    companies_scanned: int,
+    relevant_jobs_count: int,
+    new_jobs: list[dict],
+    previously_seen_count: int,
+) -> None:
+    new_job_companies = sorted({job["company"] for job in new_jobs})
+
+    print("=" * 40)
+    print("Career Radar")
+    print("=" * 40)
+    print()
+    print(f"Companies scanned: {companies_scanned}")
+    print(f"Relevant jobs: {relevant_jobs_count}")
+    print(f"NEW jobs: {len(new_jobs)}")
+
+    if new_job_companies:
+        print(f"Companies containing NEW jobs: {', '.join(new_job_companies)}")
+
+    print()
+    print("-" * 40)
+    print()
+
+    if new_jobs:
+        for company, company_jobs in group_jobs_by_company(new_jobs).items():
+            print(company)
+            print()
+
+            for job in company_jobs:
+                print(f"* {job['title']}")
+
+            print()
+    else:
+        print("No new jobs today.")
+        print()
+
+    print("-" * 40)
+    print()
+    print(f"Previously seen jobs: {previously_seen_count}")
+    print()
+    print("=" * 40)
+
+
 def main():
     configure_output_encoding()
-
-    print("=" * 50)
-    print("Career Radar")
-    print("=" * 50)
 
     companies_to_scan = get_companies_to_scan()
 
@@ -60,22 +127,19 @@ def main():
     all_jobs = []
 
     for company in companies_to_scan:
-        jobs = ScannerFactory.scan(company, debug=DEBUG)
+        jobs = scan_company(company)
         all_jobs.extend(jobs)
 
-    print("\nRelevant jobs found:")
-    print("=" * 50)
+    history_result = update_job_history(all_jobs)
+    new_jobs = history_result["new_jobs"]
+    send_email_digest(new_jobs)
 
-    if not all_jobs:
-        print("No relevant jobs found.")
-        return
-
-    for job in all_jobs:
-        print(f"\nCompany: {job['company']}")
-        print(f"Title: {job['title']}")
-        print(f"Matched: {job['matched_keyword']}")
-        print(f"Location: {job.get('matched_location', 'Unknown')}")
-        print(f"URL: {job['url']}")
+    print_daily_summary(
+        companies_scanned=len(companies_to_scan),
+        relevant_jobs_count=len(all_jobs),
+        new_jobs=new_jobs,
+        previously_seen_count=history_result["previously_seen_count"],
+    )
 
 
 if __name__ == "__main__":

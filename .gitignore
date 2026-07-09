@@ -30,6 +30,7 @@ Thumbs.db
 .cache/
 *.sqlite
 *.db
+data/job_history.json
 
 # Zip files
 *.zip
