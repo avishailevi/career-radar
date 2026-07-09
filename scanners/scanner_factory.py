@@ -5,6 +5,7 @@ from scanners.eightfold_scanner import EightfoldScanner
 from scanners.generic_scanner import GenericScanner
 from scanners.google_scanner import GoogleScanner
 from scanners.microsoft_scanner import MicrosoftScanner
+from scanners.static_json_scanner import StaticJsonScanner
 from scanners.synopsys_scanner import SynopsysScanner
 from scanners.workday_scanner import WorkdayScanner
 
@@ -19,6 +20,7 @@ class ScannerFactory:
         "generic": GenericScanner,
         "google": GoogleScanner,
         "microsoft": MicrosoftScanner,
+        "static_json": StaticJsonScanner,
         "synopsys": SynopsysScanner,
         "workday": WorkdayScanner,
     }

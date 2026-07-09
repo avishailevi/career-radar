@@ -18,6 +18,7 @@ keywords = [
     "Firmware",
     "Embedded",
     "DSP",
+    "RF",
     "PCB",
     "Signal Integrity",
     "Power Integrity",
@@ -26,7 +27,13 @@ keywords = [
     "STA",
     "Timing",
     "Place and Route",
-    "Floorplanning"
+    "Floorplanning",
+    "חומרה",
+    "קושחה",
+    "אלקטרוניקה",
+    "הנדסת חשמל",
+    "וריפיקציה",
+    "אימות"
 ]
 
 locations = [

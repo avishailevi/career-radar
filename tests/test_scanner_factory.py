@@ -124,6 +124,26 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         synopsys_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_static_json_platform_uses_static_json_scanner(self):
+        company = {
+            "name": "Elbit",
+            "platform": "static_json",
+            "url": "https://example.com",
+        }
+
+        static_json_scanner_class = Mock()
+        static_json_scanner = static_json_scanner_class.return_value
+        static_json_scanner.scan.return_value = []
+
+        with patch.dict(
+            ScannerFactory.SCANNERS,
+            {"static_json": static_json_scanner_class},
+        ):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        static_json_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_missing_platform_uses_generic_scanner(self):
         company = {
             "name": "Unknown",
