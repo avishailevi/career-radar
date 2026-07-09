@@ -73,6 +73,23 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         generic_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_comeet_platform_uses_comeet_scanner(self):
+        company = {
+            "name": "Nova",
+            "platform": "comeet",
+            "url": "https://example.com",
+        }
+
+        comeet_scanner_class = Mock()
+        comeet_scanner = comeet_scanner_class.return_value
+        comeet_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"comeet": comeet_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        comeet_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_dejobs_platform_uses_dejobs_scanner(self):
         company = {
             "name": "Cadence",
@@ -90,6 +107,40 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         dejobs_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_eightfold_platform_uses_eightfold_scanner(self):
+        company = {
+            "name": "Qualcomm",
+            "platform": "eightfold",
+            "url": "https://example.com",
+        }
+
+        eightfold_scanner_class = Mock()
+        eightfold_scanner = eightfold_scanner_class.return_value
+        eightfold_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"eightfold": eightfold_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        eightfold_scanner.scan.assert_called_once_with(company, debug=False)
+
+    def test_getro_platform_uses_getro_scanner(self):
+        company = {
+            "name": "Rafael",
+            "platform": "getro",
+            "url": "https://example.com",
+        }
+
+        getro_scanner_class = Mock()
+        getro_scanner = getro_scanner_class.return_value
+        getro_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"getro": getro_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        getro_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_synopsys_platform_uses_synopsys_scanner(self):
         company = {
             "name": "Synopsys",
@@ -106,6 +157,26 @@ class ScannerFactoryTest(unittest.TestCase):
 
         self.assertEqual(jobs, [])
         synopsys_scanner.scan.assert_called_once_with(company, debug=False)
+
+    def test_static_json_platform_uses_static_json_scanner(self):
+        company = {
+            "name": "Elbit",
+            "platform": "static_json",
+            "url": "https://example.com",
+        }
+
+        static_json_scanner_class = Mock()
+        static_json_scanner = static_json_scanner_class.return_value
+        static_json_scanner.scan.return_value = []
+
+        with patch.dict(
+            ScannerFactory.SCANNERS,
+            {"static_json": static_json_scanner_class},
+        ):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        static_json_scanner.scan.assert_called_once_with(company, debug=False)
 
     def test_missing_platform_uses_generic_scanner(self):
         company = {

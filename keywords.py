@@ -15,7 +15,15 @@ keywords = [
     "Electrical Engineer",
     "System Integration",
     "Integration Engineer",
+    "System Engineer",
+    "Electronic",
+    "Optical",
+    "Physicist",
+    "Firmware",
     "Embedded",
+    "DSP",
+    "RF",
+    "Radio Frequency",
     "PCB",
     "Signal Integrity",
     "Power Integrity",
@@ -24,7 +32,13 @@ keywords = [
     "STA",
     "Timing",
     "Place and Route",
-    "Floorplanning"
+    "Floorplanning",
+    "חומרה",
+    "קושחה",
+    "אלקטרוניקה",
+    "הנדסת חשמל",
+    "וריפיקציה",
+    "אימות"
 ]
 
 locations = [
