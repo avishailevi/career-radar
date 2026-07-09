@@ -98,6 +98,9 @@ def is_job_url(url: str) -> bool:
     url_lower = url.lower()
     parsed_url = urlparse(url_lower)
 
+    if parsed_url.netloc.endswith("dejobs.org"):
+        return parsed_url.path.endswith("/job/")
+
     if parsed_url.netloc.endswith("workdayjobs.com"):
         return "/job/" in parsed_url.path
 
@@ -151,6 +154,19 @@ def get_title_from_url(url: str) -> str:
         slug = parts[1]
 
     return slug.replace("-", " ").strip().title()
+
+
+def clean_link_title(title: str) -> str:
+    lines = [
+        line.strip()
+        for line in title.splitlines()
+        if line.strip()
+    ]
+
+    if not lines:
+        return ""
+
+    return lines[0]
 
 
 def keyword_matches(keyword: str, text: str) -> bool:

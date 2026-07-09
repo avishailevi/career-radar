@@ -46,13 +46,13 @@ companies = [
     },
     {
         "name": "Cadence",
-        "platform": "custom",
-        "url": "https://www.cadence.com/en_US/home/company/careers.html",
+        "platform": "dejobs",
+        "url": "https://cadence.dejobs.org/locations/isr/jobs/",
     },
     {
         "name": "Synopsys",
-        "platform": "custom",
-        "url": "https://careers.synopsys.com/",
+        "platform": "synopsys",
+        "url": "https://careers.synopsys.com/search-jobs/Israel",
     },
     {
         "name": "Mobileye",
@@ -72,12 +72,12 @@ companies = [
     {
         "name": "Applied Materials",
         "platform": "custom",
-        "url": "https://www.appliedmaterials.com/us/en/careers.html",
+        "url": "https://jobs.appliedmaterials.com/location/israel-jobs/95/294640/2",
     },
     {
         "name": "KLA",
-        "platform": "custom",
-        "url": "https://www.kla.com/careers",
+        "platform": "workday",
+        "url": "https://kla.wd1.myworkdayjobs.com/Israel",
     },
     {
         "name": "Nova",
@@ -87,7 +87,7 @@ companies = [
     {
         "name": "SolarEdge",
         "platform": "custom",
-        "url": "https://corporate.solaredge.com/en/careers/open-positions",
+        "url": "https://www.comeet.com/jobs/solaredge/71.00A",
     },
     {
         "name": "Rafael",

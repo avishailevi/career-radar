@@ -1,5 +1,8 @@
 import unittest
 
+from services.filter_service import clean_link_title
+from services.filter_service import find_matching_keyword
+from services.filter_service import find_matching_location
 from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_url
 from services.filter_service import is_identifier_title
@@ -8,6 +11,13 @@ from services.filter_service import is_job_url
 
 
 class FilterServiceTest(unittest.TestCase):
+    def test_clean_link_title_uses_first_non_empty_line(self):
+        title = clean_link_title(
+            "\nApplications Engineer\nRaanana, Israel\nCategory: Engineering"
+        )
+
+        self.assertEqual(title, "Applications Engineer")
+
     def test_google_job_result_url_is_job_url(self):
         url = (
             "https://www.google.com/about/careers/applications/"
@@ -15,6 +25,28 @@ class FilterServiceTest(unittest.TestCase):
         )
 
         self.assertTrue(is_job_url(url))
+
+    def test_hw_keyword_matches_hardware_abbreviation(self):
+        matched_keyword = find_matching_keyword("Computing HW Engineer")
+
+        self.assertEqual(matched_keyword, "HW")
+
+    def test_rehovot_location_matches(self):
+        matched_location = find_matching_location("Computing HW Engineer in Rehovot")
+
+        self.assertEqual(matched_location, "Rehovot")
+
+    def test_hyphenated_petah_tikva_location_matches(self):
+        matched_location = find_matching_location(
+            "https://cadence.dejobs.org/petah-tikva-isr/job/"
+        )
+
+        self.assertEqual(matched_location, "Petah-Tikva")
+
+    def test_co_il_domain_does_not_match_location(self):
+        matched_location = find_matching_location("https://jobs.iai.co.il/job/76043122")
+
+        self.assertIsNone(matched_location)
 
     def test_google_job_result_url_is_not_bad_url(self):
         url = (
@@ -47,6 +79,19 @@ class FilterServiceTest(unittest.TestCase):
 
     def test_nuvoton_category_url_is_not_job_url(self):
         url = "https://nuvoton.co.il/careers/co/architecture/all"
+
+        self.assertFalse(is_job_url(url))
+
+    def test_dejobs_job_detail_url_is_job_url(self):
+        url = (
+            "https://cadence.dejobs.org/petah-tikva-isr/"
+            "functional-verification-engineer/26E331/job/"
+        )
+
+        self.assertTrue(is_job_url(url))
+
+    def test_dejobs_listing_url_is_not_job_url(self):
+        url = "https://cadence.dejobs.org/locations/isr/jobs/"
 
         self.assertFalse(is_job_url(url))
 

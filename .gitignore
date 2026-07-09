@@ -20,6 +20,7 @@ test-results/
 # Logs
 *.log
 logs/
+reports/
 
 # OS
 .DS_Store
