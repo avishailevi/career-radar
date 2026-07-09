@@ -1,6 +1,8 @@
 import unittest
 
 from services.filter_service import clean_link_title
+from services.filter_service import find_matching_keyword
+from services.filter_service import find_matching_location
 from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_url
 from services.filter_service import is_identifier_title
@@ -23,6 +25,16 @@ class FilterServiceTest(unittest.TestCase):
         )
 
         self.assertTrue(is_job_url(url))
+
+    def test_hw_keyword_matches_hardware_abbreviation(self):
+        matched_keyword = find_matching_keyword("Computing HW Engineer")
+
+        self.assertEqual(matched_keyword, "HW")
+
+    def test_rehovot_location_matches(self):
+        matched_location = find_matching_location("Computing HW Engineer in Rehovot")
+
+        self.assertEqual(matched_location, "Rehovot")
 
     def test_google_job_result_url_is_not_bad_url(self):
         url = (

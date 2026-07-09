@@ -72,7 +72,7 @@ companies = [
     {
         "name": "Applied Materials",
         "platform": "custom",
-        "url": "https://www.appliedmaterials.com/us/en/careers.html",
+        "url": "https://jobs.appliedmaterials.com/location/israel-jobs/95/294640/2",
     },
     {
         "name": "KLA",
@@ -87,7 +87,7 @@ companies = [
     {
         "name": "SolarEdge",
         "platform": "custom",
-        "url": "https://corporate.solaredge.com/en/careers/open-positions",
+        "url": "https://www.comeet.com/jobs/solaredge/71.00A",
     },
     {
         "name": "Rafael",

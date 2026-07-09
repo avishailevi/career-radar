@@ -11,6 +11,7 @@ keywords = [
     "Verilog",
     "Board Design",
     "Hardware",
+    "HW",
     "Electrical Engineer",
     "System Integration",
     "Integration Engineer",
@@ -36,6 +37,7 @@ locations = [
     "Yokneam",
     "Migdal Haemek",
     "Ra'anana",
+    "Rehovot",
     "Petah Tikva",
     "Netanya"
 ]
