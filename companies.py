@@ -100,8 +100,10 @@ companies = [
     },
     {
         "name": "Rafael",
-        "platform": "custom",
-        "url": "https://www.rafael.co.il/careers/",
+        "platform": "getro",
+        "url": "https://jobs.lhh.co.il/companies/rafael-advanced-defense-systems",
+        "network_id": "1200",
+        "organization_id": 23055,
     },
     {
         "name": "Israel Aerospace Industries",

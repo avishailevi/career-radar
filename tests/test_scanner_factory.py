@@ -124,6 +124,23 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         eightfold_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_getro_platform_uses_getro_scanner(self):
+        company = {
+            "name": "Rafael",
+            "platform": "getro",
+            "url": "https://example.com",
+        }
+
+        getro_scanner_class = Mock()
+        getro_scanner = getro_scanner_class.return_value
+        getro_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"getro": getro_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        getro_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_synopsys_platform_uses_synopsys_scanner(self):
         company = {
             "name": "Synopsys",

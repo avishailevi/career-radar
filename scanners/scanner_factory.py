@@ -4,6 +4,7 @@ from scanners.comeet_scanner import ComeetScanner
 from scanners.dejobs_scanner import DejobsScanner
 from scanners.eightfold_scanner import EightfoldScanner
 from scanners.generic_scanner import GenericScanner
+from scanners.getro_scanner import GetroScanner
 from scanners.google_scanner import GoogleScanner
 from scanners.microsoft_scanner import MicrosoftScanner
 from scanners.static_json_scanner import StaticJsonScanner
@@ -20,6 +21,7 @@ class ScannerFactory:
         "dejobs": DejobsScanner,
         "eightfold": EightfoldScanner,
         "generic": GenericScanner,
+        "getro": GetroScanner,
         "google": GoogleScanner,
         "microsoft": MicrosoftScanner,
         "static_json": StaticJsonScanner,
