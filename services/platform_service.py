@@ -1,4 +1,5 @@
 DETAIL_TEXT_PLATFORMS = {
+    "amazon",
     "apple",
     "google",
     "mobileye",

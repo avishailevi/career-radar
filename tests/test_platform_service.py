@@ -17,10 +17,10 @@ class PlatformServiceTest(unittest.TestCase):
         self.assertTrue(should_read_detail_pages(company))
         self.assertFalse(should_follow_job_list_link(company))
 
-    def test_amazon_does_not_read_detail_pages_or_follow_job_list_link(self):
+    def test_amazon_reads_detail_pages_without_following_job_list_link(self):
         company = {"platform": "amazon"}
 
-        self.assertFalse(should_read_detail_pages(company))
+        self.assertTrue(should_read_detail_pages(company))
         self.assertFalse(should_follow_job_list_link(company))
 
     def test_microsoft_reads_detail_pages_and_follows_job_list_link(self):
