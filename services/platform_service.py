@@ -12,6 +12,7 @@ DETAIL_TEXT_PLATFORMS = {
 NO_JOB_LIST_FOLLOW_PLATFORMS = {
     "amazon",
     "apple",
+    "dejobs",
     "synopsys",
     "tower",
 }

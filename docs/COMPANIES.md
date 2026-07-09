@@ -21,21 +21,21 @@ This file tracks company scan status.
 | Amazon | Amazon Jobs | Green | Reads result cards and finds relevant Annapurna Labs hardware jobs in Israel. |
 | Qualcomm | Qualcomm Careers | Green | Detects relevant Israel jobs. |
 | Marvell | Workday-like | Green | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
-| Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |
+| Cadence | Dejobs | Green | Uses Dejobs Israel listing and detects relevant physical design / verification jobs. |
 | Synopsys | Synopsys Careers | Green | Uses Israel search results and detects relevant engineering jobs. |
 | Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
 | Nuvoton | Company site | Green | Detects relevant Herzliya jobs. |
 | Tower Semiconductor | Company site | Green | Detects relevant Migdal Haemek engineering jobs. |
 | Applied Materials | Applied Materials Jobs | Green | Uses official Israel jobs page and detects relevant Rehovot hardware jobs. |
-| KLA | Company site | Red | Error page. |
-| Nova | Company site | Red | Needs job parsing. |
+| KLA | Workday | Green | Uses direct KLA Israel Workday board and detects relevant board design jobs. |
+| Nova | Company site | Red | Official Israel pages appear blocked or dynamically rendered; job rows are not exposed to Playwright. |
 | SolarEdge | Comeet | Green | Uses Comeet job board and detects relevant Herzliya hardware and embedded jobs. |
-| Rafael | Company site | Red | Did not load links. |
-| Israel Aerospace Industries | Company site | Red | Did not load links. |
-| Elbit | Company site | Red | Access denied. |
+| Rafael | Company site / LHH | Red | Official page exposes no job links; LHH board triggers a download flow and needs special handling. |
+| Israel Aerospace Industries | Hebrew company site | Red | Official Hebrew jobs board loads, but matching needs Hebrew location parsing. |
+| Elbit | Hebrew company site | Red | Interactive Hebrew search page does not expose job links to the generic scanner. |
 
 ## Priority Order
 
-1. Review remaining yellow statuses.
-2. Review red company statuses where access is not blocked by site protections.
-3. Handle Israeli defense companies separately if their sites block scraping.
+1. Add platform support for Hebrew/interactive boards where links are not exposed to the generic scanner.
+2. Add Hebrew location parsing before re-enabling IAI matching.
+3. Revisit blocked/dynamic boards such as Nova and Rafael when a stable source or API is identified.

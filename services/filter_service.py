@@ -98,6 +98,9 @@ def is_job_url(url: str) -> bool:
     url_lower = url.lower()
     parsed_url = urlparse(url_lower)
 
+    if parsed_url.netloc.endswith("dejobs.org"):
+        return parsed_url.path.endswith("/job/")
+
     if parsed_url.netloc.endswith("workdayjobs.com"):
         return "/job/" in parsed_url.path
 

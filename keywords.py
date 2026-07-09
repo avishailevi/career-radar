@@ -29,15 +29,16 @@ keywords = [
 
 locations = [
     "Israel",
-    "IL",
     "Tel Aviv",
     "Haifa",
     "Herzliya",
     "Jerusalem",
     "Yokneam",
     "Migdal Haemek",
+    "Migdal-Haemek",
     "Ra'anana",
     "Rehovot",
     "Petah Tikva",
+    "Petah-Tikva",
     "Netanya"
 ]

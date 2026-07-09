@@ -46,8 +46,8 @@ companies = [
     },
     {
         "name": "Cadence",
-        "platform": "custom",
-        "url": "https://www.cadence.com/en_US/home/company/careers.html",
+        "platform": "dejobs",
+        "url": "https://cadence.dejobs.org/locations/isr/jobs/",
     },
     {
         "name": "Synopsys",
@@ -76,8 +76,8 @@ companies = [
     },
     {
         "name": "KLA",
-        "platform": "custom",
-        "url": "https://www.kla.com/careers",
+        "platform": "workday",
+        "url": "https://kla.wd1.myworkdayjobs.com/Israel",
     },
     {
         "name": "Nova",
