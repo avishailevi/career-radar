@@ -2,14 +2,15 @@
 
 ## Current Priority
 
-- Review remaining red/yellow company statuses after completing the ScannerFactory Workday milestone.
+- Company status cleanup: remaining unresolved items are platform-level blockers, not one-off company URL fixes.
 
 ## Next Tasks
 
 - Validate syntax and imports after each change.
 - Keep `main.py` stable.
-- Review non-Workday yellow statuses next.
-- Review red company statuses where access is not blocked by site protections.
+- Add Eightfold platform support for location metadata, starting with Qualcomm.
+- Add Hebrew/interactive board support for Israeli defense company sites.
+- Revisit blocked or dynamically rendered boards only when a stable source/API is identified.
 
 ## Validation
 
@@ -19,5 +20,5 @@
 
 ## Known Follow-Up Work
 
-- Review red/yellow company statuses in `docs/COMPANIES.md`.
 - Keep documentation aligned with the code after each small refactor.
+- Track remaining red/yellow companies in `docs/COMPANIES.md` as platform blockers until their shared platform support exists.

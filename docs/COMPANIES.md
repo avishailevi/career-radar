@@ -15,12 +15,12 @@ This file tracks company scan status.
 | NVIDIA | Workday | Green | Finds Israel jobs. |
 | Apple | Apple Careers | Green | Finds Israel jobs. |
 | Intel | Workday | Green | Israel location URL works. |
-| Microsoft | Microsoft Israel | Green | Scanner detects jobs; currently no relevant hardware matches. |
-| Broadcom | Workday-like | Green | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
+| Microsoft | Microsoft Israel | Green | Scanner detects Israel jobs; current live results have no relevant hardware matches. |
+| Broadcom | Workday-like | Yellow | Opens global Workday listing and detects jobs; no Israel matches in loaded results. |
 | Google | Google Careers | Green | Detects Google job-result links and finds relevant Israel jobs. |
 | Amazon | Amazon Jobs | Green | Reads result cards and finds relevant Annapurna Labs hardware jobs in Israel. |
-| Qualcomm | Qualcomm Careers | Green | Detects relevant Israel jobs. |
-| Marvell | Workday-like | Green | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
+| Qualcomm | Eightfold | Yellow | Official board exposes job links but not location metadata to the generic scanner; needs Eightfold platform support or a stable API. |
+| Marvell | Workday-like | Yellow | Opens global Workday listing and detects jobs; no Israel matches in loaded results. |
 | Cadence | Dejobs | Green | Uses Dejobs Israel listing and detects relevant physical design / verification jobs. |
 | Synopsys | Synopsys Careers | Green | Uses Israel search results and detects relevant engineering jobs. |
 | Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
@@ -36,6 +36,7 @@ This file tracks company scan status.
 
 ## Priority Order
 
-1. Add platform support for Hebrew/interactive boards where links are not exposed to the generic scanner.
-2. Add Hebrew location parsing before re-enabling IAI matching.
-3. Revisit blocked/dynamic boards such as Nova and Rafael when a stable source or API is identified.
+1. Add platform support for Eightfold boards, starting with Qualcomm location metadata.
+2. Add platform support for Hebrew/interactive boards where links are not exposed to the generic scanner.
+3. Add Hebrew location parsing before re-enabling IAI matching.
+4. Revisit blocked/dynamic boards such as Nova and Rafael when a stable source or API is identified.
