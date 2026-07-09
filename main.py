@@ -72,6 +72,27 @@ def group_jobs_by_company(jobs: list[dict]) -> dict:
     return dict(sorted(grouped_jobs.items()))
 
 
+def get_confidence_rank(job: dict) -> int:
+    confidence_order = {
+        "high": 3,
+        "medium": 2,
+        "low": 1,
+    }
+    return confidence_order.get(job.get("match_confidence"), 0)
+
+
+def sort_jobs_by_relevance(jobs: list[dict]) -> list[dict]:
+    return sorted(
+        jobs,
+        key=lambda job: (
+            -get_confidence_rank(job),
+            -job.get("relevance_score", 0),
+            job.get("company", ""),
+            job.get("title", ""),
+        ),
+    )
+
+
 def scan_companies(companies_to_scan: list[dict]) -> tuple[list[dict], list[dict]]:
     all_jobs = []
     scan_health = []
@@ -148,16 +169,12 @@ def print_daily_summary(
     print()
 
     if new_jobs:
-        for company, company_jobs in group_jobs_by_company(new_jobs).items():
-            print(company)
-            print()
-
-            for job in company_jobs:
-                print(f"* {job['title']}")
-                print(f"  Location: {job.get('matched_location', 'Unknown')}")
-                print(f"  Matched: {job.get('matched_keyword', 'Unknown')}")
-                print(f"  URL: {job['url']}")
-
+        for job in sort_jobs_by_relevance(new_jobs):
+            print(f"{job['company']}")
+            print(f"* {job['title']}")
+            print(f"  Location: {job.get('matched_location', 'Unknown')}")
+            print(f"  Matched: {job.get('matched_keyword', 'Unknown')}")
+            print(f"  URL: {job['url']}")
             print()
     else:
         print("No new jobs today.")
