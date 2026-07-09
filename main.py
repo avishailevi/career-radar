@@ -102,6 +102,9 @@ def print_daily_summary(
 
             for job in company_jobs:
                 print(f"* {job['title']}")
+                print(f"  Location: {job.get('matched_location', 'Unknown')}")
+                print(f"  Matched: {job.get('matched_keyword', 'Unknown')}")
+                print(f"  URL: {job['url']}")
 
             print()
     else:
