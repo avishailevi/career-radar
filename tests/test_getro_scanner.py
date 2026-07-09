@@ -63,6 +63,8 @@ class GetroScannerTest(unittest.TestCase):
                     "url": "https://example.com/job/1",
                     "matched_keyword": "Hardware",
                     "matched_location": "North District, Israel",
+                    "relevance_score": 70,
+                    "match_confidence": "medium",
                 }
             ],
         )

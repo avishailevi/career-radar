@@ -86,6 +86,8 @@ class EightfoldScannerTest(unittest.TestCase):
                     "url": "https://careers.qualcomm.com/careers/job/1",
                     "matched_keyword": "RTL",
                     "matched_location": "Israel",
+                    "relevance_score": 75,
+                    "match_confidence": "high",
                 }
             ],
         )

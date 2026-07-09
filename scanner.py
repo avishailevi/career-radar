@@ -5,8 +5,8 @@ from playwright.sync_api import sync_playwright
 
 from services.filter_service import POSSIBLE_JOB_TEXT_HINTS
 from services.filter_service import clean_link_title
-from services.filter_service import find_matching_keyword
 from services.filter_service import find_matching_location
+from services.filter_service import evaluate_job_relevance
 from services.filter_service import get_job_key
 from services.filter_service import get_title_from_url
 from services.filter_service import is_identifier_title
@@ -363,9 +363,13 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     },
                 )
 
-                matched_keyword = find_matching_keyword(text_to_check)
+                relevance = evaluate_job_relevance(
+                    title,
+                    text_to_check,
+                    matched_location,
+                )
 
-                if not matched_keyword:
+                if not relevance:
                     continue
 
                 job_key = get_job_key(
@@ -390,7 +394,9 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "title": title,
                         "url": full_url,
                         "matched_location": matched_location,
-                        "matched_keyword": matched_keyword,
+                        "matched_keyword": relevance["matched_keyword"],
+                        "relevance_score": relevance["relevance_score"],
+                        "match_confidence": relevance["match_confidence"],
                     },
                 )
 
@@ -399,8 +405,10 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "company": company["name"],
                         "title": title,
                         "url": full_url,
-                        "matched_keyword": matched_keyword,
                         "matched_location": matched_location,
+                        "matched_keyword": relevance["matched_keyword"],
+                        "relevance_score": relevance["relevance_score"],
+                        "match_confidence": relevance["match_confidence"],
                     }
                 )
 

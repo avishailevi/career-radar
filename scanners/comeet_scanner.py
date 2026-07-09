@@ -3,7 +3,7 @@ import re
 from urllib.request import Request
 from urllib.request import urlopen
 
-from services.filter_service import find_matching_keyword
+from services.filter_service import evaluate_job_relevance
 from services.filter_service import get_job_key
 
 
@@ -96,9 +96,14 @@ class ComeetScanner:
             department_match_count += 1
             title = position.get("name", "").strip()
             matched_location = get_location_name(position)
-            matched_keyword = find_matching_keyword(get_text_to_check(position))
+            text_to_check = get_text_to_check(position)
+            relevance = evaluate_job_relevance(
+                title,
+                text_to_check,
+                matched_location,
+            )
 
-            if not title or not matched_location or not matched_keyword:
+            if not title or not matched_location or not relevance:
                 continue
 
             job_key = get_job_key(company["name"], title, matched_location)
@@ -112,8 +117,10 @@ class ComeetScanner:
                     "company": company["name"],
                     "title": title,
                     "url": position.get("url_comeet_hosted_page") or company["url"],
-                    "matched_keyword": matched_keyword,
                     "matched_location": matched_location,
+                    "matched_keyword": relevance["matched_keyword"],
+                    "relevance_score": relevance["relevance_score"],
+                    "match_confidence": relevance["match_confidence"],
                 }
             )
 
