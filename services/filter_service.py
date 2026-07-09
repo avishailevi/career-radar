@@ -78,6 +78,117 @@ BAD_URL_PARTS = [
 ]
 
 
+STRONG_KEYWORDS = {
+    "asic",
+    "vlsi",
+    "rtl",
+    "fpga",
+    "uvm",
+    "systemverilog",
+    "verilog",
+    "physical design",
+    "design verification",
+    "board design",
+    "pcb",
+    "rf",
+    "radio frequency",
+    "signal integrity",
+    "power integrity",
+    "sta",
+    "timing",
+    "place and route",
+    "floorplanning",
+}
+
+
+MEDIUM_KEYWORDS = {
+    "firmware",
+    "embedded",
+    "dsp",
+    "electrical engineer",
+    "electronic",
+    "verification",
+    "×—×•×ž×¨×”",
+    "×§×•×©×—×”",
+    "××œ×§×˜×¨×•× ×™×§×”",
+    "×”× ×“×¡×ª ×—×©×ž×œ",
+    "×•×¨×™×¤×™×§×¦×™×”",
+    "××™×ž×•×ª",
+}
+
+
+WEAK_KEYWORDS = {
+    "hardware",
+    "hw",
+    "system integration",
+    "integration engineer",
+    "system engineer",
+    "optical",
+    "physicist",
+}
+
+
+TITLE_KEYWORD_SCORES = {
+    "strong": 50,
+    "medium": 35,
+    "weak": 20,
+}
+
+
+TITLE_KEYWORD_OVERRIDES = {
+    "hardware": 25,
+    "hw": 25,
+}
+
+
+BODY_KEYWORD_SCORES = {
+    "strong": 35,
+    "medium": 20,
+    "weak": 10,
+}
+
+
+NEGATIVE_TITLE_TERMS = {
+    "accountant",
+    "business development",
+    "buyer",
+    "customer success",
+    "finance",
+    "frontend",
+    "hr",
+    "human resources",
+    "legal",
+    "marketing",
+    "operator",
+    "planner",
+    "procurement",
+    "product manager",
+    "program manager",
+    "project manager",
+    "recruiter",
+    "sales",
+    "supplier quality",
+    "warehouse",
+}
+
+
+NEGATIVE_BODY_TERMS = {
+    "business development",
+    "customer success",
+    "finance",
+    "frontend",
+    "human resources",
+    "legal",
+    "marketing",
+    "procurement",
+    "sales",
+}
+
+
+LOW_CONFIDENCE_THRESHOLD = 50
+HIGH_CONFIDENCE_THRESHOLD = 75
+
+
 def is_bad_title(title: str) -> bool:
     title_lower = title.lower()
     return any(bad == title_lower for bad in BAD_TITLES)
@@ -180,11 +291,137 @@ def location_matches(location: str, text: str) -> bool:
 
 
 def find_matching_keyword(text: str) -> str | None:
-    for keyword in keywords:
-        if keyword_matches(keyword, text):
-            return keyword
+    matches = get_keyword_matches(text)
+    if matches:
+        return matches[0]["keyword"]
 
     return None
+
+
+def get_keyword_strength(keyword: str) -> str:
+    keyword_lower = keyword.lower()
+
+    if keyword_lower in STRONG_KEYWORDS:
+        return "strong"
+
+    if keyword_lower in MEDIUM_KEYWORDS:
+        return "medium"
+
+    return "weak"
+
+
+def get_keyword_matches(text: str) -> list[dict]:
+    matches = []
+
+    for index, keyword in enumerate(keywords):
+        if keyword_matches(keyword, text):
+            strength = get_keyword_strength(keyword)
+            score = TITLE_KEYWORD_OVERRIDES.get(
+                keyword.lower(),
+                TITLE_KEYWORD_SCORES[strength],
+            )
+            matches.append(
+                {
+                    "keyword": keyword,
+                    "strength": strength,
+                    "score": score,
+                    "index": index,
+                }
+            )
+
+    return sorted(
+        matches,
+        key=lambda match: (
+            match["score"],
+            len(match["keyword"]) if match["strength"] != "weak" else -match["index"],
+        ),
+        reverse=True,
+    )
+
+
+def has_term_match(term: str, text: str) -> bool:
+    pattern = r"\b" + re.escape(term.lower()) + r"\b"
+    return re.search(pattern, text.lower()) is not None
+
+
+def get_negative_score(title: str, body: str) -> int:
+    score = 0
+
+    if any(has_term_match(term, title) for term in NEGATIVE_TITLE_TERMS):
+        score -= 60
+
+    if any(has_term_match(term, body) for term in NEGATIVE_BODY_TERMS):
+        score -= 20
+
+    return score
+
+
+def get_location_score(matched_location: str | None) -> int:
+    if not matched_location:
+        return 0
+
+    if matched_location.strip().lower() == "israel":
+        return 15
+
+    return 25
+
+
+def get_match_confidence(score: int) -> str:
+    if score >= HIGH_CONFIDENCE_THRESHOLD:
+        return "high"
+
+    if score >= LOW_CONFIDENCE_THRESHOLD:
+        return "medium"
+
+    return "low"
+
+
+def evaluate_job_relevance(
+    title: str,
+    body: str,
+    matched_location: str | None,
+) -> dict | None:
+    title_matches = get_keyword_matches(title)
+    body_matches = get_keyword_matches(body)
+    title_keywords = {match["keyword"] for match in title_matches}
+
+    title_score = min(
+        sum(match["score"] for match in title_matches),
+        70,
+    )
+    body_score = min(
+        sum(
+            BODY_KEYWORD_SCORES[match["strength"]]
+            for match in body_matches
+            if match["keyword"] not in title_keywords
+        ),
+        35,
+    )
+    score = (
+        title_score
+        + body_score
+        + get_location_score(matched_location)
+        + get_negative_score(title, body)
+    )
+    confidence = get_match_confidence(score)
+    matches = sorted(
+        title_matches + body_matches,
+        key=lambda match: (
+            match["score"],
+            match["keyword"] in title_keywords,
+            len(match["keyword"]) if match["strength"] != "weak" else -match["index"],
+        ),
+        reverse=True,
+    )
+
+    if not matches or not matched_location or score < LOW_CONFIDENCE_THRESHOLD:
+        return None
+
+    return {
+        "matched_keyword": matches[0]["keyword"],
+        "relevance_score": score,
+        "match_confidence": confidence,
+    }
 
 
 def find_matching_location(text: str) -> str | None:

@@ -73,6 +73,8 @@ class ComeetScannerTest(unittest.TestCase):
                     "url": "https://example.com/job/1",
                     "matched_keyword": "Electronic",
                     "matched_location": "Rehovot",
+                    "relevance_score": 60,
+                    "match_confidence": "medium",
                 }
             ],
         )

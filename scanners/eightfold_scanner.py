@@ -5,7 +5,7 @@ from urllib.request import Request
 from urllib.request import urlopen
 import json
 
-from services.filter_service import find_matching_keyword
+from services.filter_service import evaluate_job_relevance
 from services.filter_service import find_matching_location
 from services.filter_service import get_job_key
 
@@ -97,13 +97,17 @@ class EightfoldScanner:
                     continue
 
                 location_match_count += 1
-                matched_keyword = find_matching_keyword(text_to_check)
-
-                if not matched_keyword:
-                    continue
-
                 title = position.get("name", "").strip()
                 if not title:
+                    continue
+
+                relevance = evaluate_job_relevance(
+                    title,
+                    text_to_check,
+                    matched_location,
+                )
+
+                if not relevance:
                     continue
 
                 job_key = get_job_key(
@@ -122,8 +126,10 @@ class EightfoldScanner:
                         "company": company["name"],
                         "title": title,
                         "url": get_position_url(company, position),
-                        "matched_keyword": matched_keyword,
                         "matched_location": matched_location,
+                        "matched_keyword": relevance["matched_keyword"],
+                        "relevance_score": relevance["relevance_score"],
+                        "match_confidence": relevance["match_confidence"],
                     }
                 )
 

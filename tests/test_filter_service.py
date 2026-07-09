@@ -1,6 +1,7 @@
 import unittest
 
 from services.filter_service import clean_link_title
+from services.filter_service import evaluate_job_relevance
 from services.filter_service import find_matching_keyword
 from services.filter_service import find_matching_location
 from services.filter_service import get_title_from_url
@@ -152,6 +153,79 @@ class FilterServiceTest(unittest.TestCase):
         title = "Senior Silicon Physical Design Engineer"
 
         self.assertFalse(is_identifier_title(title))
+
+    def test_strong_hardware_title_has_high_confidence(self):
+        relevance = evaluate_job_relevance(
+            "Senior RTL Design Engineer",
+            "Hardware Engineering role in Haifa",
+            "Haifa",
+        )
+
+        self.assertEqual(relevance["matched_keyword"], "RTL")
+        self.assertGreaterEqual(relevance["relevance_score"], 75)
+        self.assertEqual(relevance["match_confidence"], "high")
+
+    def test_weak_body_keyword_without_strong_context_is_filtered(self):
+        relevance = evaluate_job_relevance(
+            "Program Manager",
+            "Work with hardware teams on delivery planning",
+            "Haifa",
+        )
+
+        self.assertIsNone(relevance)
+
+    def test_sparse_hardware_engineer_title_still_passes(self):
+        relevance = evaluate_job_relevance(
+            "Hardware Engineer",
+            "",
+            "Haifa",
+        )
+
+        self.assertEqual(relevance["matched_keyword"], "Hardware")
+        self.assertEqual(relevance["relevance_score"], 50)
+        self.assertEqual(relevance["match_confidence"], "medium")
+
+    def test_negative_title_suppresses_weak_positive_match(self):
+        relevance = evaluate_job_relevance(
+            "Product Marketing Manager",
+            "Hardware product launch role in Israel",
+            "Israel",
+        )
+
+        self.assertIsNone(relevance)
+
+    def test_system_engineer_requires_hardware_context(self):
+        weak_relevance = evaluate_job_relevance(
+            "System Engineer",
+            "Cross-functional delivery role",
+            "Haifa",
+        )
+        strong_relevance = evaluate_job_relevance(
+            "System Engineer",
+            "RF and FPGA system design role",
+            "Haifa",
+        )
+
+        self.assertIsNone(weak_relevance)
+        self.assertIsNotNone(strong_relevance)
+        self.assertEqual(strong_relevance["matched_keyword"], "FPGA")
+
+    def test_city_location_scores_higher_than_broad_israel_location(self):
+        broad_relevance = evaluate_job_relevance(
+            "Firmware Engineer",
+            "Embedded firmware role",
+            "Israel",
+        )
+        city_relevance = evaluate_job_relevance(
+            "Firmware Engineer",
+            "Embedded firmware role",
+            "Haifa",
+        )
+
+        self.assertLess(
+            broad_relevance["relevance_score"],
+            city_relevance["relevance_score"],
+        )
 
 
 if __name__ == "__main__":

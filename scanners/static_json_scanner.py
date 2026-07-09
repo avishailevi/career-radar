@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 from urllib.request import Request
 from urllib.request import urlopen
 
-from services.filter_service import find_matching_keyword
+from services.filter_service import evaluate_job_relevance
 from services.filter_service import get_job_key
 
 
@@ -115,9 +115,13 @@ class StaticJsonScanner:
 
             location_match_count += 1
             text_to_check = f"{title} {matched_location} {get_text_to_check(company, job)}"
-            matched_keyword = find_matching_keyword(text_to_check)
+            relevance = evaluate_job_relevance(
+                title,
+                text_to_check,
+                matched_location,
+            )
 
-            if not matched_keyword:
+            if not relevance:
                 continue
 
             job_key = get_job_key(company["name"], title, matched_location)
@@ -131,8 +135,10 @@ class StaticJsonScanner:
                     "company": company["name"],
                     "title": title,
                     "url": get_job_url(company, job),
-                    "matched_keyword": matched_keyword,
                     "matched_location": matched_location,
+                    "matched_keyword": relevance["matched_keyword"],
+                    "relevance_score": relevance["relevance_score"],
+                    "match_confidence": relevance["match_confidence"],
                 }
             )
 

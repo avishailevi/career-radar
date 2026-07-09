@@ -74,6 +74,8 @@ class StaticJsonScannerTest(unittest.TestCase):
                     "url": "https://example.com/jobs/1",
                     "matched_keyword": "Board Design",
                     "matched_location": "Haifa",
+                    "relevance_score": 85,
+                    "match_confidence": "high",
                 }
             ],
         )
