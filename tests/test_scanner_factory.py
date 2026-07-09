@@ -73,6 +73,23 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         generic_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_comeet_platform_uses_comeet_scanner(self):
+        company = {
+            "name": "Nova",
+            "platform": "comeet",
+            "url": "https://example.com",
+        }
+
+        comeet_scanner_class = Mock()
+        comeet_scanner = comeet_scanner_class.return_value
+        comeet_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"comeet": comeet_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        comeet_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_dejobs_platform_uses_dejobs_scanner(self):
         company = {
             "name": "Cadence",

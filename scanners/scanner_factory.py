@@ -1,5 +1,6 @@
 from scanners.amazon_scanner import AmazonScanner
 from scanners.apple_scanner import AppleScanner
+from scanners.comeet_scanner import ComeetScanner
 from scanners.dejobs_scanner import DejobsScanner
 from scanners.eightfold_scanner import EightfoldScanner
 from scanners.generic_scanner import GenericScanner
@@ -14,6 +15,7 @@ class ScannerFactory:
     SCANNERS = {
         "amazon": AmazonScanner,
         "apple": AppleScanner,
+        "comeet": ComeetScanner,
         "custom": GenericScanner,
         "dejobs": DejobsScanner,
         "eightfold": EightfoldScanner,

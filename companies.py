@@ -83,8 +83,15 @@ companies = [
     },
     {
         "name": "Nova",
-        "platform": "custom",
-        "url": "https://www.novami.com/careers/",
+        "platform": "comeet",
+        "url": "https://www.comeet.com/jobs/nova/A5.007",
+        "country": "IL",
+        "allowed_departments": [
+            "Engineering",
+            "Manufacture Engineering",
+            "Production",
+            "Research & Development",
+        ],
     },
     {
         "name": "SolarEdge",
