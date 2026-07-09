@@ -72,19 +72,71 @@ def group_jobs_by_company(jobs: list[dict]) -> dict:
     return dict(sorted(grouped_jobs.items()))
 
 
+def scan_companies(companies_to_scan: list[dict]) -> tuple[list[dict], list[dict]]:
+    all_jobs = []
+    scan_health = []
+
+    for company in companies_to_scan:
+        company_name = company["name"]
+
+        try:
+            jobs = scan_company(company)
+        except Exception:
+            scan_health.append(
+                {
+                    "company": company_name,
+                    "status": "failed",
+                }
+            )
+            continue
+
+        all_jobs.extend(jobs)
+        status = "success_with_jobs" if jobs else "success_zero_jobs"
+        scan_health.append(
+            {
+                "company": company_name,
+                "status": status,
+            }
+        )
+
+    return all_jobs, scan_health
+
+
+def get_companies_by_status(scan_health: list[dict], status: str) -> list[str]:
+    return [
+        result["company"]
+        for result in scan_health
+        if result["status"] == status
+    ]
+
+
+def format_company_count(label: str, companies: list[str]) -> str:
+    if not companies:
+        return f"{label}: 0"
+
+    return f"{label}: {len(companies)} ({', '.join(companies)})"
+
+
 def print_daily_summary(
     companies_scanned: int,
     relevant_jobs_count: int,
     new_jobs: list[dict],
     previously_seen_count: int,
+    scan_health: list[dict],
 ) -> None:
     new_job_companies = sorted({job["company"] for job in new_jobs})
+    companies_with_jobs = get_companies_by_status(scan_health, "success_with_jobs")
+    companies_with_zero_jobs = get_companies_by_status(scan_health, "success_zero_jobs")
+    failed_companies = get_companies_by_status(scan_health, "failed")
 
     print("=" * 40)
     print("Career Radar")
     print("=" * 40)
     print()
     print(f"Companies scanned: {companies_scanned}")
+    print(format_company_count("Companies with relevant jobs", companies_with_jobs))
+    print(format_company_count("Companies with zero relevant jobs", companies_with_zero_jobs))
+    print(format_company_count("Failed companies", failed_companies))
     print(f"Relevant jobs: {relevant_jobs_count}")
     print(f"NEW jobs: {len(new_jobs)}")
 
@@ -127,11 +179,7 @@ def main():
         print("No matching company found.")
         return
 
-    all_jobs = []
-
-    for company in companies_to_scan:
-        jobs = scan_company(company)
-        all_jobs.extend(jobs)
+    all_jobs, scan_health = scan_companies(companies_to_scan)
 
     history_result = update_job_history(all_jobs)
     new_jobs = history_result["new_jobs"]
@@ -142,6 +190,7 @@ def main():
         relevant_jobs_count=len(all_jobs),
         new_jobs=new_jobs,
         previously_seen_count=history_result["previously_seen_count"],
+        scan_health=scan_health,
     )
 
 
