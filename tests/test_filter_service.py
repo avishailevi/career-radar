@@ -1,5 +1,6 @@
 import unittest
 
+from services.filter_service import clean_link_title
 from services.filter_service import get_title_from_url
 from services.filter_service import is_bad_url
 from services.filter_service import is_identifier_title
@@ -8,6 +9,13 @@ from services.filter_service import is_job_url
 
 
 class FilterServiceTest(unittest.TestCase):
+    def test_clean_link_title_uses_first_non_empty_line(self):
+        title = clean_link_title(
+            "\nApplications Engineer\nRaanana, Israel\nCategory: Engineering"
+        )
+
+        self.assertEqual(title, "Applications Engineer")
+
     def test_google_job_result_url_is_job_url(self):
         url = (
             "https://www.google.com/about/careers/applications/"

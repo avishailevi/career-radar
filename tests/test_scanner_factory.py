@@ -73,6 +73,23 @@ class ScannerFactoryTest(unittest.TestCase):
         self.assertEqual(jobs, [])
         generic_scanner.scan.assert_called_once_with(company, debug=False)
 
+    def test_synopsys_platform_uses_synopsys_scanner(self):
+        company = {
+            "name": "Synopsys",
+            "platform": "synopsys",
+            "url": "https://example.com",
+        }
+
+        synopsys_scanner_class = Mock()
+        synopsys_scanner = synopsys_scanner_class.return_value
+        synopsys_scanner.scan.return_value = []
+
+        with patch.dict(ScannerFactory.SCANNERS, {"synopsys": synopsys_scanner_class}):
+            jobs = ScannerFactory.scan(company)
+
+        self.assertEqual(jobs, [])
+        synopsys_scanner.scan.assert_called_once_with(company, debug=False)
+
     def test_missing_platform_uses_generic_scanner(self):
         company = {
             "name": "Unknown",

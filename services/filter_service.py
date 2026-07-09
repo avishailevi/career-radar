@@ -153,6 +153,19 @@ def get_title_from_url(url: str) -> str:
     return slug.replace("-", " ").strip().title()
 
 
+def clean_link_title(title: str) -> str:
+    lines = [
+        line.strip()
+        for line in title.splitlines()
+        if line.strip()
+    ]
+
+    if not lines:
+        return ""
+
+    return lines[0]
+
+
 def keyword_matches(keyword: str, text: str) -> bool:
     pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
     return re.search(pattern, text.lower()) is not None

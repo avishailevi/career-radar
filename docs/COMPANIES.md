@@ -22,7 +22,7 @@ This file tracks company scan status.
 | Qualcomm | Qualcomm Careers | Green | Detects relevant Israel jobs. |
 | Marvell | Workday-like | Green | Opens Workday listing and detects jobs; no Israel matches in loaded results. |
 | Cadence | Cadence Careers | Red | Possible bot protection / Cloudflare. |
-| Synopsys | Synopsys Careers | Yellow | Opens job search and detects jobs; no Israel matches in loaded results. |
+| Synopsys | Synopsys Careers | Green | Uses Israel search results and detects relevant engineering jobs. |
 | Mobileye | Mobileye Careers | Green | Detects relevant Israel jobs. |
 | Nuvoton | Company site | Green | Detects relevant Herzliya jobs. |
 | Tower Semiconductor | Company site | Green | Detects relevant Migdal Haemek engineering jobs. |

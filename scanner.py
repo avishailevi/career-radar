@@ -4,6 +4,7 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
 from services.filter_service import POSSIBLE_JOB_TEXT_HINTS
+from services.filter_service import clean_link_title
 from services.filter_service import find_matching_keyword
 from services.filter_service import find_matching_location
 from services.filter_service import get_job_key
@@ -269,7 +270,8 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
         for link in links:
             try:
-                title = link.inner_text().strip()
+                link_text = link.inner_text().strip()
+                title = clean_link_title(link_text)
                 href = link.get_attribute("href")
 
                 if not href:
@@ -319,7 +321,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     continue
 
                 job_url_count += 1
-                text_to_check = f"{title} {full_url}"
+                text_to_check = f"{title} {full_url} {link_text}"
                 matched_from_detail = False
 
                 add_debug_sample(

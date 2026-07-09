@@ -51,8 +51,8 @@ companies = [
     },
     {
         "name": "Synopsys",
-        "platform": "custom",
-        "url": "https://careers.synopsys.com/",
+        "platform": "synopsys",
+        "url": "https://careers.synopsys.com/search-jobs/Israel",
     },
     {
         "name": "Mobileye",
