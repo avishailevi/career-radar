@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_HISTORY_PATH = Path("data") / "job_history.json"
+VALID_TRIAGE_STATES = {"saved", "dismissed", "applied"}
 
 
 def normalize_identifier_part(value) -> str:
@@ -59,6 +60,7 @@ def build_history_record(job: dict, seen_at: str) -> dict:
         "url": job["url"],
         "matched_keyword": job.get("matched_keyword", ""),
         "matched_location": job.get("matched_location", ""),
+        "triage_state": job.get("triage_state", ""),
         "first_seen": seen_at,
         "last_seen": seen_at,
     }
@@ -113,4 +115,84 @@ def update_job_history(
         "new_jobs": new_jobs,
         "previously_seen_count": previously_seen_count,
         "total_seen_count": len(history["jobs"]),
+    }
+
+
+def get_job_short_id(job: dict) -> str:
+    return job.get("job_id", "")[:8]
+
+
+def is_dismissed_job(job: dict) -> bool:
+    return job.get("triage_state") == "dismissed"
+
+
+def normalize_triage_state(state: str) -> str:
+    return str(state or "").strip().lower()
+
+
+def find_job_by_identifier(history: dict, job_identifier: str) -> tuple[dict | None, str]:
+    clean_identifier = str(job_identifier or "").strip().lower()
+
+    if not clean_identifier:
+        return None, "not_found"
+
+    matches = [
+        job
+        for job in history.get("jobs", [])
+        if job.get("job_id", "").lower().startswith(clean_identifier)
+    ]
+
+    if not matches:
+        return None, "not_found"
+
+    if len(matches) > 1:
+        return None, "ambiguous"
+
+    return matches[0], "found"
+
+
+def set_job_triage_state(
+    job_identifier: str,
+    state: str,
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> dict:
+    triage_state = normalize_triage_state(state)
+
+    if triage_state not in VALID_TRIAGE_STATES:
+        return {
+            "updated": False,
+            "error": "invalid_state",
+            "message": (
+                "Invalid state. Use one of: "
+                + ", ".join(sorted(VALID_TRIAGE_STATES))
+            ),
+        }
+
+    history = load_history(history_path)
+    job, status = find_job_by_identifier(history, job_identifier)
+
+    if status == "not_found":
+        return {
+            "updated": False,
+            "error": "not_found",
+            "message": f"No job found for ID '{job_identifier}'.",
+        }
+
+    if status == "ambiguous":
+        return {
+            "updated": False,
+            "error": "ambiguous",
+            "message": f"Job ID '{job_identifier}' matches more than one job.",
+        }
+
+    job["triage_state"] = triage_state
+    save_history(history, history_path)
+
+    return {
+        "updated": True,
+        "job": job,
+        "message": (
+            f"Marked {get_job_short_id(job)} as {triage_state}: "
+            f"{job.get('title', '')}"
+        ),
     }
