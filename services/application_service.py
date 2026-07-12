@@ -10,6 +10,7 @@ from companies import companies
 from scanners.scanner_factory import ScannerFactory
 from services.email_service import send_email_digest
 from services.job_history_service import DEFAULT_HISTORY_PATH
+from services.job_history_service import generate_job_id
 from services.job_history_service import get_jobs_by_ids
 from services.job_history_service import get_jobs_by_triage_state
 from services.job_history_service import get_latest_scan
@@ -133,6 +134,22 @@ def get_visible_new_jobs(new_jobs: list[dict]) -> list[dict]:
     ]
 
 
+def get_stable_job_ids(jobs: list[dict]) -> list[str]:
+    job_ids = []
+    seen_job_ids = set()
+
+    for job in jobs:
+        job_id = generate_job_id(job["company"], job["title"], job["url"])
+
+        if job_id in seen_job_ids:
+            continue
+
+        seen_job_ids.add(job_id)
+        job_ids.append(job_id)
+
+    return job_ids
+
+
 def get_companies_by_status(scan_health: list[dict], status: str) -> list[str]:
     return [
         result["company"]
@@ -221,9 +238,11 @@ def run_scan(
         visible_new_jobs = get_visible_new_jobs(new_jobs)
         send_email_digest(visible_new_jobs)
 
+        relevant_job_ids = get_stable_job_ids(all_jobs)
+
         summary = build_scan_summary(
             companies_scanned=len(companies_to_scan),
-            relevant_jobs_count=len(all_jobs),
+            relevant_jobs_count=len(relevant_job_ids),
             new_jobs_count=len(visible_new_jobs),
             scan_health=scan_health,
         )
@@ -231,7 +250,7 @@ def run_scan(
             "status": "completed",
             "message": "Scan completed.",
             "companies_scanned": len(companies_to_scan),
-            "relevant_jobs_count": len(all_jobs),
+            "relevant_jobs_count": len(relevant_job_ids),
             "new_jobs": new_jobs,
             "visible_new_jobs": sort_jobs_by_relevance(visible_new_jobs),
             "previously_seen_count": history_result["previously_seen_count"],
@@ -245,6 +264,7 @@ def run_scan(
                 "summary": summary,
                 "scan_health": scan_health,
                 "new_job_ids": [job["job_id"] for job in new_jobs],
+                "relevant_job_ids": relevant_job_ids,
             },
             history_path,
         )
@@ -268,6 +288,20 @@ def get_latest_new_jobs(
 
     return sort_jobs_by_relevance(
         get_visible_new_jobs(get_jobs_by_ids(new_job_ids, history_path))
+    )
+
+
+def get_latest_relevant_jobs(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    latest_scan = get_latest_scan(history_path)
+    relevant_job_ids = latest_scan.get("relevant_job_ids", [])
+
+    if not isinstance(relevant_job_ids, list):
+        return []
+
+    return sort_jobs_by_relevance(
+        get_visible_new_jobs(get_jobs_by_ids(relevant_job_ids, history_path))
     )
 
 

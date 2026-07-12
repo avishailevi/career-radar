@@ -32,6 +32,7 @@
 
     <nav class="tabs" aria-label="Views">
         <a href="{{ url_for('new_jobs') }}" class="{% if active_tab == 'new' %}active{% endif %}">New Jobs</a>
+        <a href="{{ url_for('relevant_jobs') }}" class="{% if active_tab == 'relevant' %}active{% endif %}">Relevant Jobs</a>
         <a href="{{ url_for('saved_jobs') }}" class="{% if active_tab == 'saved' %}active{% endif %}">Saved</a>
         <a href="{{ url_for('applied_jobs') }}" class="{% if active_tab == 'applied' %}active{% endif %}">Applied</a>
         <a href="{{ url_for('dismissed_jobs') }}" class="{% if active_tab == 'dismissed' %}active{% endif %}">Dismissed</a>
