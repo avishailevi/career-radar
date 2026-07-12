@@ -121,6 +121,22 @@ main {
     padding: 28px 24px 48px;
 }
 
+.alert {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #d6a4a4;
+    border-radius: 8px;
+    background: #fff5f5;
+    color: #7f2424;
+}
+
+.alert span {
+    overflow-wrap: anywhere;
+}
+
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

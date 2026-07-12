@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if scan_status.state == "running" %}
+        <meta http-equiv="refresh" content="3">
+    {% endif %}
     <title>Career Radar</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
@@ -36,6 +39,12 @@
     </nav>
 
     <main>
+        {% if scan_status.state == "failed" %}
+            <section class="alert alert-error">
+                <strong>Scan failed.</strong>
+                <span>{{ scan_status.error or scan_status.message }}</span>
+            </section>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 </body>

@@ -3,23 +3,36 @@ setlocal
 
 cd /d "%~dp0"
 set "APP_URL=http://127.0.0.1:8765/"
+set "PYTHON_EXE="
 
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo Python was not found. Install Python, create or activate the project environment, then run this launcher again.
+if exist ".venv\Scripts\python.exe" (
+    set "PYTHON_EXE=%CD%\.venv\Scripts\python.exe"
+) else (
+    python --version >nul 2>&1
+    if not errorlevel 1 (
+        set "PYTHON_EXE=python"
+    )
+)
+
+if not defined PYTHON_EXE (
+    echo Python was not found.
+    echo Create the project environment with:
+    echo   python -m venv .venv
+    echo   .venv\Scripts\python.exe -m pip install -r requirements.txt
+    echo Or install Python and make sure python is available from PATH.
     pause
     exit /b 1
 )
 
-python -c "import flask" >nul 2>&1
+"%PYTHON_EXE%" -c "import flask" >nul 2>&1
 if errorlevel 1 (
     echo Career Radar dependencies are missing.
-    echo Run: pip install -r requirements.txt
+    echo Run: "%PYTHON_EXE%" -m pip install -r requirements.txt
     pause
     exit /b 1
 )
 
-start "Career Radar Server" cmd /k "set CAREER_RADAR_NO_BROWSER=1&& python local_app.py"
+start "Career Radar Server" cmd /k "set CAREER_RADAR_NO_BROWSER=1&& ""%PYTHON_EXE%"" local_app.py"
 
 echo Starting Career Radar...
 for /l %%i in (1,1,30) do (

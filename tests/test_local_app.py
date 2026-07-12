@@ -96,6 +96,36 @@ class LocalAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No scan has completed yet.", response.data)
 
+    def test_auto_refresh_only_while_scan_is_running(self):
+        with patch("local_app.get_latest_new_jobs", return_value=[]):
+            with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                with patch("local_app.get_scan_status", return_value=self.status("running")):
+                    running_response = self.client.get("/")
+
+        with patch("local_app.get_latest_new_jobs", return_value=[]):
+            with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                with patch("local_app.get_scan_status", return_value=self.status("completed")):
+                    completed_response = self.client.get("/")
+
+        self.assertIn(b'http-equiv="refresh"', running_response.data)
+        self.assertIn(b'content="3"', running_response.data)
+        self.assertNotIn(b'http-equiv="refresh"', completed_response.data)
+
+    def test_failed_scan_message_renders_without_stack_trace(self):
+        status = self.status("failed")
+        status["message"] = "Scan failed."
+        status["error"] = "Could not complete the scan."
+
+        with patch("local_app.get_latest_new_jobs", return_value=[]):
+            with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                with patch("local_app.get_scan_status", return_value=status):
+                    response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Scan failed.", response.data)
+        self.assertIn(b"Could not complete the scan.", response.data)
+        self.assertNotIn(b"Traceback", response.data)
+
     def summary(self):
         return {
             "companies_scanned": 0,
