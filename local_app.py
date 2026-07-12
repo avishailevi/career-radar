@@ -10,6 +10,7 @@ from flask import request
 from flask import url_for
 
 from services.application_service import get_latest_new_jobs
+from services.application_service import get_latest_relevant_jobs
 from services.application_service import get_latest_scan_health
 from services.application_service import get_latest_scan_summary
 from services.application_service import get_scan_status
@@ -39,6 +40,23 @@ def new_jobs():
         title="New Jobs",
         empty_message="No new jobs from the latest scan.",
         jobs=get_latest_new_jobs(HISTORY_PATH),
+        scan_status=get_scan_status(),
+        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        show_actions=True,
+    )
+
+
+@app.get("/relevant")
+def relevant_jobs():
+    return render_template(
+        "jobs.html",
+        active_tab="relevant",
+        title="Relevant Jobs",
+        empty_message=(
+            "No relevant-job list is stored for the latest scan. "
+            "Run Scan Now to refresh it."
+        ),
+        jobs=get_latest_relevant_jobs(HISTORY_PATH),
         scan_status=get_scan_status(),
         scan_summary=get_latest_scan_summary(HISTORY_PATH),
         show_actions=True,

@@ -6,10 +6,10 @@
         <strong>{{ scan_summary.companies_scanned }}</strong>
         <span>Companies scanned</span>
     </div>
-    <div>
+    <a class="summary-card summary-link" href="{{ url_for('relevant_jobs') }}">
         <strong>{{ scan_summary.relevant_jobs_count }}</strong>
         <span>Relevant jobs</span>
-    </div>
+    </a>
     <div>
         <strong>{{ scan_summary.new_jobs_count }}</strong>
         <span>New jobs</span>

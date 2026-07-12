@@ -17,6 +17,49 @@ class LocalAppTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No new jobs from the latest scan.", response.data)
+        self.assertIn(b'href="/relevant"', response.data)
+        self.assertIn(b"Relevant jobs", response.data)
+
+    def test_relevant_view_uses_local_history_without_running_scan(self):
+        jobs = [
+            {
+                "job_id": "1234567890abcdef",
+                "company": "Apple",
+                "title": "ASIC Engineer",
+                "url": "https://apple.test/1",
+                "matched_keyword": "ASIC",
+                "matched_location": "Israel",
+                "match_confidence": "high",
+                "relevance_score": 92,
+            }
+        ]
+
+        with patch("local_app.get_latest_relevant_jobs", return_value=jobs) as get_jobs:
+            with patch("local_app.run_scan") as run_scan:
+                with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                    with patch("local_app.get_scan_status", return_value=self.status()):
+                        response = self.client.get("/relevant")
+
+        self.assertEqual(response.status_code, 200)
+        get_jobs.assert_called_once_with(local_app.HISTORY_PATH)
+        run_scan.assert_not_called()
+        self.assertIn(b"Relevant Jobs", response.data)
+        self.assertIn(b"ASIC Engineer", response.data)
+        self.assertIn(b"Short ID", response.data)
+        self.assertIn(b"12345678", response.data)
+
+    def test_relevant_view_empty_state_when_metadata_is_missing(self):
+        with patch("local_app.get_latest_relevant_jobs", return_value=[]):
+            with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                with patch("local_app.get_scan_status", return_value=self.status()):
+                    response = self.client.get("/relevant")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b"No relevant-job list is stored for the latest scan.",
+            response.data,
+        )
+        self.assertIn(b"Run Scan Now to refresh it.", response.data)
 
     def test_saved_view_uses_local_history_without_running_scan(self):
         with patch("local_app.get_triage_jobs", return_value=[]) as get_triage_jobs:
@@ -66,6 +109,21 @@ class LocalAppTest(unittest.TestCase):
         mark_job.assert_called_once_with(
             "abc12345",
             "saved",
+            local_app.HISTORY_PATH,
+        )
+
+    def test_mark_job_route_returns_to_relevant_view(self):
+        with patch("local_app.mark_job") as mark_job:
+            response = self.client.post(
+                "/jobs/abc12345/mark",
+                data={"state": "dismissed", "next": "/relevant"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/relevant")
+        mark_job.assert_called_once_with(
+            "abc12345",
+            "dismissed",
             local_app.HISTORY_PATH,
         )
 
