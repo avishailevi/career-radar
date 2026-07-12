@@ -9,14 +9,15 @@ from flask import render_template
 from flask import request
 from flask import url_for
 
-from services.application_service import get_latest_new_jobs
-from services.application_service import get_latest_relevant_jobs
-from services.application_service import get_latest_scan_health
-from services.application_service import get_latest_scan_summary
+from services.application_service import get_current_session_new_jobs
+from services.application_service import get_current_session_relevant_jobs
+from services.application_service import get_current_session_scan_health
+from services.application_service import get_current_session_scan_summary
 from services.application_service import get_scan_status
 from services.application_service import get_triage_jobs
 from services.application_service import mark_job
 from services.application_service import run_scan
+from services.application_service import session_has_scan
 
 
 app = Flask(__name__)
@@ -38,10 +39,10 @@ def new_jobs():
         "jobs.html",
         active_tab="new",
         title="New Jobs",
-        empty_message="No new jobs from the latest scan.",
-        jobs=get_latest_new_jobs(HISTORY_PATH),
+        empty_message=get_scan_empty_message(),
+        jobs=get_current_session_new_jobs(HISTORY_PATH),
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
         show_actions=True,
     )
 
@@ -52,13 +53,10 @@ def relevant_jobs():
         "jobs.html",
         active_tab="relevant",
         title="Relevant Jobs",
-        empty_message=(
-            "No relevant-job list is stored for the latest scan. "
-            "Run Scan Now to refresh it."
-        ),
-        jobs=get_latest_relevant_jobs(HISTORY_PATH),
+        empty_message=get_relevant_empty_message(),
+        jobs=get_current_session_relevant_jobs(HISTORY_PATH),
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
         show_actions=True,
     )
 
@@ -91,7 +89,7 @@ def saved_jobs():
         empty_message="No saved jobs.",
         jobs=get_triage_jobs("saved", HISTORY_PATH),
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
         show_actions=True,
     )
 
@@ -105,7 +103,7 @@ def applied_jobs():
         empty_message="No applied jobs.",
         jobs=get_triage_jobs("applied", HISTORY_PATH),
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
         show_actions=False,
     )
 
@@ -119,7 +117,7 @@ def dismissed_jobs():
         empty_message="No dismissed jobs.",
         jobs=get_triage_jobs("dismissed", HISTORY_PATH),
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
         show_actions=True,
     )
 
@@ -130,8 +128,26 @@ def scan_health():
         "scan_health.html",
         active_tab="scan_health",
         scan_status=get_scan_status(),
-        scan_summary=get_latest_scan_summary(HISTORY_PATH),
-        scan_health=get_latest_scan_health(HISTORY_PATH),
+        scan_summary=get_current_session_scan_summary(HISTORY_PATH),
+        scan_health=get_current_session_scan_health(HISTORY_PATH),
+        has_session_scan=session_has_scan(),
+    )
+
+
+def get_scan_empty_message() -> str:
+    if not session_has_scan():
+        return "No scan has been run during this session."
+
+    return "No new jobs from the latest scan."
+
+
+def get_relevant_empty_message() -> str:
+    if not session_has_scan():
+        return "No scan has been run during this session."
+
+    return (
+        "No relevant-job list is stored for the latest scan. "
+        "Run Scan Now to refresh it."
     )
 
 

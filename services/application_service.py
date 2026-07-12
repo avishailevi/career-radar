@@ -35,6 +35,7 @@ _scan_status = {
     "completed_at": "",
     "error": "",
 }
+_session_has_scan = False
 
 
 def get_requested_company_names(args: list[str] | None = None) -> list[str]:
@@ -201,10 +202,30 @@ def get_scan_status() -> dict:
     return dict(_scan_status)
 
 
+def session_has_scan() -> bool:
+    return _session_has_scan
+
+
+def reset_session_scan_state() -> None:
+    global _session_has_scan
+    _session_has_scan = False
+    _scan_status.update(
+        {
+            "state": "idle",
+            "message": "Ready to scan.",
+            "started_at": "",
+            "completed_at": "",
+            "error": "",
+        }
+    )
+
+
 def run_scan(
     company_args: list[str] | None = None,
     history_path: str | Path = DEFAULT_HISTORY_PATH,
 ) -> dict:
+    global _session_has_scan
+
     if not _scan_lock.acquire(blocking=False):
         return {
             "status": "already_running",
@@ -230,6 +251,7 @@ def run_scan(
                 "summary": build_scan_summary(0, 0, 0, []),
             }
             _set_scan_status("completed", result["message"])
+            _session_has_scan = True
             return result
 
         all_jobs, scan_health = scan_companies(companies_to_scan)
@@ -269,6 +291,7 @@ def run_scan(
             history_path,
         )
         _set_scan_status("completed", "Scan completed.")
+        _session_has_scan = True
         return result
     except Exception as exc:
         _set_scan_status("failed", "Scan failed.", str(exc))
@@ -291,6 +314,15 @@ def get_latest_new_jobs(
     )
 
 
+def get_current_session_new_jobs(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    if not session_has_scan():
+        return []
+
+    return get_latest_new_jobs(history_path)
+
+
 def get_latest_relevant_jobs(
     history_path: str | Path = DEFAULT_HISTORY_PATH,
 ) -> list[dict]:
@@ -305,6 +337,15 @@ def get_latest_relevant_jobs(
     )
 
 
+def get_current_session_relevant_jobs(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    if not session_has_scan():
+        return []
+
+    return get_latest_relevant_jobs(history_path)
+
+
 def get_latest_scan_summary(
     history_path: str | Path = DEFAULT_HISTORY_PATH,
 ) -> dict:
@@ -317,6 +358,15 @@ def get_latest_scan_summary(
     return build_scan_summary(0, 0, 0, [])
 
 
+def get_current_session_scan_summary(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> dict:
+    if not session_has_scan():
+        return build_scan_summary(0, 0, 0, [])
+
+    return get_latest_scan_summary(history_path)
+
+
 def get_latest_scan_health(
     history_path: str | Path = DEFAULT_HISTORY_PATH,
 ) -> list[dict]:
@@ -327,6 +377,15 @@ def get_latest_scan_health(
         return scan_health
 
     return []
+
+
+def get_current_session_scan_health(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    if not session_has_scan():
+        return []
+
+    return get_latest_scan_health(history_path)
 
 
 def get_triage_jobs(
