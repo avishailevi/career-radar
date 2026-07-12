@@ -10,10 +10,12 @@ from services.job_history_service import generate_job_id
 
 class ApplicationServiceTest(unittest.TestCase):
     def setUp(self):
+        application_service.reset_session_scan_state()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.history_path = Path(self.temp_dir.name) / "data" / "job_history.json"
 
     def tearDown(self):
+        application_service.reset_session_scan_state()
         self.temp_dir.cleanup()
 
     def test_run_scan_returns_structured_result_and_persists_latest_scan(self):
@@ -255,6 +257,111 @@ class ApplicationServiceTest(unittest.TestCase):
         application_service.mark_job(job_id, "dismissed", self.history_path)
 
         self.assertEqual(application_service.get_latest_new_jobs(self.history_path), [])
+
+    def test_fresh_session_hides_previous_scan_without_deleting_history(self):
+        job = self.build_history_job(
+            "Apple",
+            "Previous Job",
+            "https://apple.test/previous",
+        )
+        history = {
+            "jobs": [job],
+            "latest_scan": {
+                "summary": application_service.build_scan_summary(
+                    1,
+                    1,
+                    1,
+                    [{"company": "Apple", "status": "success_with_jobs"}],
+                ),
+                "scan_health": [
+                    {"company": "Apple", "status": "success_with_jobs"},
+                ],
+                "new_job_ids": [job["job_id"]],
+                "relevant_job_ids": [job["job_id"]],
+            },
+        }
+        self.write_history(history)
+
+        self.assertFalse(application_service.session_has_scan())
+        self.assertEqual(
+            application_service.get_current_session_new_jobs(self.history_path),
+            [],
+        )
+        self.assertEqual(
+            application_service.get_current_session_relevant_jobs(self.history_path),
+            [],
+        )
+        self.assertEqual(
+            application_service.get_current_session_scan_summary(
+                self.history_path,
+            )["companies_scanned"],
+            0,
+        )
+        self.assertEqual(
+            application_service.get_current_session_scan_health(self.history_path),
+            [],
+        )
+        self.assertEqual(self.read_history(), history)
+
+    def test_current_session_results_are_available_after_successful_scan(self):
+        jobs = [self.build_job("Apple", "ASIC Engineer", "https://apple.test/1")]
+
+        with patch(
+            "services.application_service.get_companies_to_scan",
+            return_value=[{"name": "Apple"}],
+        ):
+            with patch(
+                "services.application_service.scan_companies",
+                return_value=(jobs, [{"company": "Apple", "status": "success_with_jobs"}]),
+            ):
+                with patch("services.application_service.send_email_digest"):
+                    application_service.run_scan(history_path=self.history_path)
+
+        self.assertTrue(application_service.session_has_scan())
+        self.assertEqual(
+            application_service.get_current_session_scan_summary(
+                self.history_path,
+            )["companies_scanned"],
+            1,
+        )
+        self.assertEqual(
+            application_service.get_current_session_new_jobs(
+                self.history_path,
+            )[0]["title"],
+            "ASIC Engineer",
+        )
+        self.assertEqual(
+            application_service.get_current_session_relevant_jobs(
+                self.history_path,
+            )[0]["title"],
+            "ASIC Engineer",
+        )
+
+    def test_resetting_session_returns_to_fresh_state(self):
+        jobs = [self.build_job("Apple", "ASIC Engineer", "https://apple.test/1")]
+
+        with patch(
+            "services.application_service.get_companies_to_scan",
+            return_value=[{"name": "Apple"}],
+        ):
+            with patch(
+                "services.application_service.scan_companies",
+                return_value=(jobs, [{"company": "Apple", "status": "success_with_jobs"}]),
+            ):
+                with patch("services.application_service.send_email_digest"):
+                    application_service.run_scan(history_path=self.history_path)
+
+        application_service.reset_session_scan_state()
+
+        self.assertFalse(application_service.session_has_scan())
+        self.assertEqual(
+            application_service.get_current_session_new_jobs(self.history_path),
+            [],
+        )
+        self.assertEqual(
+            application_service.get_latest_new_jobs(self.history_path)[0]["title"],
+            "ASIC Engineer",
+        )
 
     def build_job(self, company, title, url, confidence="high", score=90):
         return {

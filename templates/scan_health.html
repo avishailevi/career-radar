@@ -50,6 +50,10 @@
         </tbody>
     </table>
 {% else %}
-    <p class="empty">No scan has completed yet.</p>
+    {% if has_session_scan %}
+        <p class="empty">No scan has completed yet.</p>
+    {% else %}
+        <p class="empty">Run a scan to view health information.</p>
+    {% endif %}
 {% endif %}
 {% endblock %}
