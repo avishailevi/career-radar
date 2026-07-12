@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="summary-grid">
+    <div>
+        <strong>{{ scan_summary.companies_scanned }}</strong>
+        <span>Companies scanned</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.relevant_jobs_count }}</strong>
+        <span>Relevant jobs</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.new_jobs_count }}</strong>
+        <span>New jobs</span>
+    </div>
+</section>
+
+<section class="section-heading">
+    <h2>{{ title }}</h2>
+</section>
+
+{% if jobs %}
+    <div class="job-list">
+        {% for job in jobs %}
+            <article class="job-row">
+                <div class="job-main">
+                    <h3>{{ job.title }}</h3>
+                    <p class="company">{{ job.company }}</p>
+                    <dl>
+                        <div>
+                            <dt>Location</dt>
+                            <dd>{{ job.matched_location or "Unknown" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Matched keyword</dt>
+                            <dd>{{ job.matched_keyword or "Unknown" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Confidence</dt>
+                            <dd>{{ job.match_confidence or "Unknown" }}</dd>
+                        </div>
+                        {% if job.relevance_score is defined %}
+                            <div>
+                                <dt>Relevance score</dt>
+                                <dd>{{ job.relevance_score }}</dd>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <dt>Short ID</dt>
+                            <dd>{{ job.job_id[:8] }}</dd>
+                        </div>
+                    </dl>
+                    <a class="job-link" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">
+                        Open job page
+                    </a>
+                </div>
+                {% if show_actions %}
+                    <div class="actions">
+                        <form method="post" action="{{ url_for('mark_job_route', job_id=job.job_id[:8]) }}">
+                            <input type="hidden" name="state" value="saved">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit">Save</button>
+                        </form>
+                        <form method="post" action="{{ url_for('mark_job_route', job_id=job.job_id[:8]) }}">
+                            <input type="hidden" name="state" value="applied">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit">Mark Applied</button>
+                        </form>
+                        <form method="post" action="{{ url_for('mark_job_route', job_id=job.job_id[:8]) }}">
+                            <input type="hidden" name="state" value="dismissed">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button class="danger" type="submit">Dismiss</button>
+                        </form>
+                    </div>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="empty">{{ empty_message }}</p>
+{% endif %}
+{% endblock %}

@@ -34,7 +34,7 @@ def load_history(history_path: str | Path = DEFAULT_HISTORY_PATH) -> dict:
     if not path.exists():
         return {"jobs": []}
 
-    with path.open("r", encoding="utf-8") as history_file:
+    with path.open("r", encoding="utf-8-sig") as history_file:
         data = json.load(history_file)
 
     if isinstance(data, dict) and isinstance(data.get("jobs"), list):
@@ -53,7 +53,7 @@ def save_history(history: dict, history_path: str | Path = DEFAULT_HISTORY_PATH)
 
 
 def build_history_record(job: dict, seen_at: str) -> dict:
-    return {
+    record = {
         "job_id": generate_job_id(job["company"], job["title"], job["url"]),
         "company": job["company"],
         "title": job["title"],
@@ -64,6 +64,12 @@ def build_history_record(job: dict, seen_at: str) -> dict:
         "first_seen": seen_at,
         "last_seen": seen_at,
     }
+    if "match_confidence" in job:
+        record["match_confidence"] = job.get("match_confidence")
+    if "relevance_score" in job:
+        record["relevance_score"] = job.get("relevance_score")
+
+    return record
 
 
 def update_job_history(
@@ -95,6 +101,10 @@ def update_job_history(
             existing_record["last_seen"] = seen_at
             existing_record["matched_keyword"] = record["matched_keyword"]
             existing_record["matched_location"] = record["matched_location"]
+            if "match_confidence" in record:
+                existing_record["match_confidence"] = record["match_confidence"]
+            if "relevance_score" in record:
+                existing_record["relevance_score"] = record["relevance_score"]
             previously_seen_count += 1
             continue
 
@@ -158,6 +168,44 @@ def get_jobs_by_triage_state(
             if normalize_triage_state(job.get("triage_state")) == triage_state
         ]
     )
+
+
+def get_jobs_by_ids(
+    job_ids: list[str],
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    history = load_history(history_path)
+    records_by_id = {
+        job.get("job_id"): job
+        for job in history.get("jobs", [])
+        if job.get("job_id")
+    }
+    return [
+        records_by_id[job_id]
+        for job_id in job_ids
+        if job_id in records_by_id
+    ]
+
+
+def save_latest_scan(
+    latest_scan: dict,
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> None:
+    history = load_history(history_path)
+    history["latest_scan"] = latest_scan
+    save_history(history, history_path)
+
+
+def get_latest_scan(
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> dict:
+    history = load_history(history_path)
+    latest_scan = history.get("latest_scan")
+
+    if isinstance(latest_scan, dict):
+        return latest_scan
+
+    return {}
 
 
 def normalize_triage_state(state: str) -> str:

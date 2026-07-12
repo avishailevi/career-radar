@@ -4,6 +4,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import main
+from services import application_service
 
 
 class ScanHealthTest(unittest.TestCase):
@@ -30,8 +31,8 @@ class ScanHealthTest(unittest.TestCase):
                 return []
             raise RuntimeError("scan failed")
 
-        with patch("main.scan_company", side_effect=scan_company):
-            jobs, scan_health = main.scan_companies(companies)
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            jobs, scan_health = application_service.scan_companies(companies)
 
         self.assertEqual(jobs, apple_jobs)
         self.assertEqual(

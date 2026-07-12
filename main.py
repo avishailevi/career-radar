@@ -1,25 +1,15 @@
 import sys
-import io
-import os
-from collections import defaultdict
-from contextlib import redirect_stdout
 
-from companies import companies
-from scanners.scanner_factory import ScannerFactory
-from services.email_service import send_email_digest
+from services.application_service import get_companies_by_status
+from services.application_service import get_companies_to_scan
+from services.application_service import get_requested_company_names
+from services.application_service import get_visible_new_jobs
+from services.application_service import run_scan
+from services.application_service import scan_companies
+from services.application_service import sort_jobs_by_relevance
 from services.job_history_service import get_job_short_id
 from services.job_history_service import get_jobs_by_triage_state
-from services.job_history_service import is_dismissed_job
 from services.job_history_service import set_job_triage_state
-from services.job_history_service import update_job_history
-
-
-DEBUG = os.environ.get("CAREER_RADAR_DEBUG", "").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
 
 
 def configure_output_encoding() -> None:
@@ -27,18 +17,6 @@ def configure_output_encoding() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
     except AttributeError:
         pass
-
-
-def get_requested_company_names() -> list[str]:
-    requested_names = []
-
-    for arg in sys.argv[1:]:
-        for name in arg.split(","):
-            clean_name = name.strip().lower()
-            if clean_name:
-                requested_names.append(clean_name)
-
-    return requested_names
 
 
 def is_triage_command() -> bool:
@@ -86,108 +64,6 @@ def print_triage_jobs(state: str, jobs: list[dict]) -> None:
 def handle_triage_view_command() -> None:
     state = sys.argv[1].lower()
     print_triage_jobs(state, get_jobs_by_triage_state(state))
-
-
-def get_companies_to_scan():
-    if len(sys.argv) == 1:
-        return companies
-
-    requested_company_names = get_requested_company_names()
-
-    matching_companies = [
-        company
-        for company in companies
-        if any(
-            requested_name in company["name"].lower()
-            for requested_name in requested_company_names
-        )
-    ]
-
-    return matching_companies
-
-
-def scan_company(company: dict) -> list[dict]:
-    if DEBUG:
-        return ScannerFactory.scan(company, debug=True)
-
-    with redirect_stdout(io.StringIO()):
-        return ScannerFactory.scan(company, debug=False)
-
-
-def group_jobs_by_company(jobs: list[dict]) -> dict:
-    grouped_jobs = defaultdict(list)
-
-    for job in jobs:
-        grouped_jobs[job["company"]].append(job)
-
-    return dict(sorted(grouped_jobs.items()))
-
-
-def get_confidence_rank(job: dict) -> int:
-    confidence_order = {
-        "high": 3,
-        "medium": 2,
-        "low": 1,
-    }
-    return confidence_order.get(job.get("match_confidence"), 0)
-
-
-def sort_jobs_by_relevance(jobs: list[dict]) -> list[dict]:
-    return sorted(
-        jobs,
-        key=lambda job: (
-            -get_confidence_rank(job),
-            -job.get("relevance_score", 0),
-            job.get("company", ""),
-            job.get("title", ""),
-        ),
-    )
-
-
-def get_visible_new_jobs(new_jobs: list[dict]) -> list[dict]:
-    return [
-        job
-        for job in new_jobs
-        if not is_dismissed_job(job)
-    ]
-
-
-def scan_companies(companies_to_scan: list[dict]) -> tuple[list[dict], list[dict]]:
-    all_jobs = []
-    scan_health = []
-
-    for company in companies_to_scan:
-        company_name = company["name"]
-
-        try:
-            jobs = scan_company(company)
-        except Exception:
-            scan_health.append(
-                {
-                    "company": company_name,
-                    "status": "failed",
-                }
-            )
-            continue
-
-        all_jobs.extend(jobs)
-        status = "success_with_jobs" if jobs else "success_zero_jobs"
-        scan_health.append(
-            {
-                "company": company_name,
-                "status": status,
-            }
-        )
-
-    return all_jobs, scan_health
-
-
-def get_companies_by_status(scan_health: list[dict], status: str) -> list[str]:
-    return [
-        result["company"]
-        for result in scan_health
-        if result["status"] == status
-    ]
 
 
 def format_company_count(label: str, companies: list[str]) -> str:
@@ -258,25 +134,20 @@ def main():
         handle_triage_view_command()
         return
 
-    companies_to_scan = get_companies_to_scan()
+    companies_to_scan = get_companies_to_scan(sys.argv[1:])
 
     if not companies_to_scan:
         print("No matching company found.")
         return
 
-    all_jobs, scan_health = scan_companies(companies_to_scan)
-
-    history_result = update_job_history(all_jobs)
-    new_jobs = history_result["new_jobs"]
-    visible_new_jobs = get_visible_new_jobs(new_jobs)
-    send_email_digest(visible_new_jobs)
+    scan_result = run_scan(sys.argv[1:])
 
     print_daily_summary(
-        companies_scanned=len(companies_to_scan),
-        relevant_jobs_count=len(all_jobs),
-        new_jobs=visible_new_jobs,
-        previously_seen_count=history_result["previously_seen_count"],
-        scan_health=scan_health,
+        companies_scanned=scan_result["companies_scanned"],
+        relevant_jobs_count=scan_result["relevant_jobs_count"],
+        new_jobs=scan_result["visible_new_jobs"],
+        previously_seen_count=scan_result["previously_seen_count"],
+        scan_health=scan_result["scan_health"],
     )
 
 
