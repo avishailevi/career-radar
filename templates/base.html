@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if scan_status.state == "running" %}
+        <meta http-equiv="refresh" content="3">
+    {% endif %}
+    <title>Career Radar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Career Radar</h1>
+            <p class="status status-{{ scan_status.state }}">
+                {{ scan_status.message }}
+                {% if scan_status.started_at %}
+                    <span>Started {{ scan_status.started_at }}</span>
+                {% endif %}
+                {% if scan_status.completed_at %}
+                    <span>Completed {{ scan_status.completed_at }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <form method="post" action="{{ url_for('scan_now') }}">
+            <button class="primary" type="submit" {% if scan_status.state == "running" %}disabled{% endif %}>
+                Scan Now
+            </button>
+        </form>
+    </header>
+
+    <nav class="tabs" aria-label="Views">
+        <a href="{{ url_for('new_jobs') }}" class="{% if active_tab == 'new' %}active{% endif %}">New Jobs</a>
+        <a href="{{ url_for('saved_jobs') }}" class="{% if active_tab == 'saved' %}active{% endif %}">Saved</a>
+        <a href="{{ url_for('applied_jobs') }}" class="{% if active_tab == 'applied' %}active{% endif %}">Applied</a>
+        <a href="{{ url_for('dismissed_jobs') }}" class="{% if active_tab == 'dismissed' %}active{% endif %}">Dismissed</a>
+        <a href="{{ url_for('scan_health') }}" class="{% if active_tab == 'scan_health' %}active{% endif %}">Scan Health</a>
+    </nav>
+
+    <main>
+        {% if scan_status.state == "failed" %}
+            <section class="alert alert-error">
+                <strong>Scan failed.</strong>
+                <span>{{ scan_status.error or scan_status.message }}</span>
+            </section>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

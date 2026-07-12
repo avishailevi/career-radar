@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section-heading">
+    <h2>Scan Health</h2>
+</section>
+
+<section class="summary-grid">
+    <div>
+        <strong>{{ scan_summary.companies_scanned }}</strong>
+        <span>Companies scanned</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.companies_with_relevant_jobs|length }}</strong>
+        <span>With relevant jobs</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.companies_with_zero_relevant_jobs|length }}</strong>
+        <span>Zero relevant jobs</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.failed_companies|length }}</strong>
+        <span>Failed companies</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.relevant_jobs_count }}</strong>
+        <span>Relevant jobs</span>
+    </div>
+    <div>
+        <strong>{{ scan_summary.new_jobs_count }}</strong>
+        <span>New jobs</span>
+    </div>
+</section>
+
+{% if scan_health %}
+    <table class="health-table">
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in scan_health %}
+                <tr>
+                    <td>{{ result.company }}</td>
+                    <td>{{ result.status }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="empty">No scan has completed yet.</p>
+{% endif %}
+{% endblock %}

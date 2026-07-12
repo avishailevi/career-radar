@@ -69,27 +69,52 @@ class DailyOutputTest(unittest.TestCase):
 
         self.assertEqual(visible_jobs, [visible_job])
 
-    def test_main_sends_email_only_for_visible_new_jobs(self):
+    def test_main_formats_structured_scan_result(self):
         visible_job = self.build_job("Qualcomm", "Best Job", "high", 80)
-        dismissed_job = self.build_job("Apple", "Dismissed Job", "high", 90)
-        dismissed_job["triage_state"] = "dismissed"
 
-        with patch("main.get_companies_to_scan", return_value=[{"name": "Apple"}]):
-            with patch("main.scan_companies", return_value=([], [])):
+        with patch("main.sys.argv", ["main.py"]):
+            with patch("main.get_companies_to_scan", return_value=[{"name": "Apple"}]):
                 with patch(
-                    "main.update_job_history",
+                    "main.run_scan",
                     return_value={
-                        "new_jobs": [dismissed_job, visible_job],
+                        "companies_scanned": 1,
+                        "relevant_jobs_count": 1,
+                        "visible_new_jobs": [visible_job],
                         "previously_seen_count": 0,
+                        "scan_health": [
+                            {"company": "Apple", "status": "success_with_jobs"},
+                        ],
                     },
-                ):
+                ) as run_scan:
                     with patch("main.print_daily_summary") as print_summary:
-                        with patch("main.send_email_digest") as send_email:
-                            main.main()
+                        main.main()
 
-        send_email.assert_called_once_with([visible_job])
+        run_scan.assert_called_once_with([])
         print_summary.assert_called_once()
         self.assertEqual(print_summary.call_args.kwargs["new_jobs"], [visible_job])
+
+    def test_cli_company_filter_passes_args_to_scan_service(self):
+        visible_job = self.build_job("Apple", "Best Job", "high", 80)
+
+        with patch("main.sys.argv", ["main.py", "Apple"]):
+            with patch("main.get_companies_to_scan", return_value=[{"name": "Apple"}]):
+                with patch(
+                    "main.run_scan",
+                    return_value={
+                        "companies_scanned": 1,
+                        "relevant_jobs_count": 1,
+                        "visible_new_jobs": [visible_job],
+                        "previously_seen_count": 0,
+                        "scan_health": [
+                            {"company": "Apple", "status": "success_with_jobs"},
+                        ],
+                    },
+                ) as run_scan:
+                    with patch("main.print_daily_summary") as print_summary:
+                        main.main()
+
+        run_scan.assert_called_once_with(["Apple"])
+        print_summary.assert_called_once()
 
     def test_mark_command_does_not_scan(self):
         output = io.StringIO()
