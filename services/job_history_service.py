@@ -24,6 +24,18 @@ def generate_job_id(company: str, title: str, url: str) -> str:
     return hashlib.sha256(raw_id.encode("utf-8")).hexdigest()
 
 
+def get_job_identity_url(job: dict) -> str:
+    return job.get("identity_url") or job.get("url", "")
+
+
+def generate_job_id_for_job(job: dict) -> str:
+    return generate_job_id(
+        job["company"],
+        job["title"],
+        get_job_identity_url(job),
+    )
+
+
 def get_seen_at() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -54,7 +66,7 @@ def save_history(history: dict, history_path: str | Path = DEFAULT_HISTORY_PATH)
 
 def build_history_record(job: dict, seen_at: str) -> dict:
     record = {
-        "job_id": generate_job_id(job["company"], job["title"], job["url"]),
+        "job_id": generate_job_id_for_job(job),
         "company": job["company"],
         "title": job["title"],
         "url": job["url"],
@@ -99,6 +111,7 @@ def update_job_history(
         if job_id in records_by_id:
             existing_record = records_by_id[job_id]
             existing_record["last_seen"] = seen_at
+            existing_record["url"] = record["url"]
             existing_record["matched_keyword"] = record["matched_keyword"]
             existing_record["matched_location"] = record["matched_location"]
             if "match_confidence" in record:

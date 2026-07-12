@@ -212,6 +212,83 @@ class JobHistoryServiceTest(unittest.TestCase):
         self.assertTrue(result["updated"])
         self.assertEqual(self.find_job(self.read_history(), "Apple")["triage_state"], "saved")
 
+    def test_identity_url_keeps_job_id_stable_when_display_url_changes(self):
+        old_url = "https://elbitsystemscareer.com/?page=search&jobId=20199"
+        new_url = "https://elbitsystemscareer.com/job?jid=20199"
+        old_job_id = generate_job_id("Elbit", "FPGA engineer", old_url)
+        jobs = [
+            {
+                "company": "Elbit",
+                "title": "FPGA engineer",
+                "url": new_url,
+                "identity_url": old_url,
+                "matched_keyword": "FPGA",
+                "matched_location": "Holon",
+            }
+        ]
+
+        with patch(
+            "services.job_history_service.get_seen_at",
+            return_value="2026-07-12T06:00:00+00:00",
+        ):
+            result = update_job_history(jobs, self.history_path)
+
+        history = self.read_history()
+
+        self.assertEqual(result["new_jobs"][0]["job_id"], old_job_id)
+        self.assertEqual(history["jobs"][0]["job_id"], old_job_id)
+        self.assertEqual(history["jobs"][0]["url"], new_url)
+        self.assertNotIn("identity_url", history["jobs"][0])
+
+    def test_existing_history_loads_when_job_uses_identity_url(self):
+        old_url = "https://elbitsystemscareer.com/?page=search&jobId=20199"
+        new_url = "https://elbitsystemscareer.com/job?jid=20199"
+        old_job_id = generate_job_id("Elbit", "FPGA engineer", old_url)
+        self.history_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.history_path.open("w", encoding="utf-8") as history_file:
+            json.dump(
+                {
+                    "jobs": [
+                        {
+                            "job_id": old_job_id,
+                            "company": "Elbit",
+                            "title": "FPGA engineer",
+                            "url": old_url,
+                            "matched_keyword": "FPGA",
+                            "matched_location": "Holon",
+                            "first_seen": "2026-07-11T06:00:00+00:00",
+                            "last_seen": "2026-07-11T06:00:00+00:00",
+                        }
+                    ]
+                },
+                history_file,
+            )
+
+        with patch(
+            "services.job_history_service.get_seen_at",
+            return_value="2026-07-12T06:00:00+00:00",
+        ):
+            result = update_job_history(
+                [
+                    {
+                        "company": "Elbit",
+                        "title": "FPGA engineer",
+                        "url": new_url,
+                        "identity_url": old_url,
+                        "matched_keyword": "FPGA",
+                        "matched_location": "Holon",
+                    }
+                ],
+                self.history_path,
+            )
+
+        history = self.read_history()
+
+        self.assertEqual(result["new_jobs"], [])
+        self.assertEqual(result["previously_seen_count"], 1)
+        self.assertEqual(history["jobs"][0]["job_id"], old_job_id)
+        self.assertEqual(history["jobs"][0]["url"], new_url)
+
     def test_get_jobs_by_triage_state_filters_saved_applied_and_dismissed(self):
         self.write_history(
             [

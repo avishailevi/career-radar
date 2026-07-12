@@ -135,7 +135,8 @@ companies = [
             "area",
             "employerName",
         ],
-        "url_template": "https://elbitsystemscareer.com/?page=search&jobId={id}",
+        "url_template": "https://elbitsystemscareer.com/job?jid={id}",
+        "identity_url_template": "https://elbitsystemscareer.com/?page=search&jobId={id}",
         "default_location": "Israel",
         "allowed_field_values": {
             "categoryId": [1, 3, 4],

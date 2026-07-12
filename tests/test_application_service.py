@@ -100,6 +100,43 @@ class ApplicationServiceTest(unittest.TestCase):
         self.assertEqual(result["summary"]["relevant_jobs_count"], 3)
         self.assertEqual(latest_scan["relevant_job_ids"], expected_job_ids)
 
+    def test_run_scan_relevant_ids_use_identity_url(self):
+        job = self.build_job(
+            "Elbit",
+            "FPGA engineer",
+            "https://elbitsystemscareer.com/job?jid=20199",
+        )
+        job["identity_url"] = "https://elbitsystemscareer.com/?page=search&jobId=20199"
+
+        with patch(
+            "services.application_service.get_companies_to_scan",
+            return_value=[{"name": "Elbit"}],
+        ):
+            with patch(
+                "services.application_service.scan_companies",
+                return_value=(
+                    [job],
+                    [{"company": "Elbit", "status": "success_with_jobs"}],
+                ),
+            ):
+                with patch("services.application_service.send_email_digest"):
+                    application_service.run_scan(
+                        history_path=self.history_path,
+                    )
+
+        latest_scan = self.read_history()["latest_scan"]
+
+        self.assertEqual(
+            latest_scan["relevant_job_ids"],
+            [
+                generate_job_id(
+                    "Elbit",
+                    "FPGA engineer",
+                    "https://elbitsystemscareer.com/?page=search&jobId=20199",
+                )
+            ],
+        )
+
     def test_latest_relevant_jobs_missing_metadata_is_backward_compatible(self):
         self.write_history(
             {
