@@ -8,6 +8,7 @@ from companies import companies
 from scanners.scanner_factory import ScannerFactory
 from services.email_service import send_email_digest
 from services.job_history_service import get_job_short_id
+from services.job_history_service import get_jobs_by_triage_state
 from services.job_history_service import is_dismissed_job
 from services.job_history_service import set_job_triage_state
 from services.job_history_service import update_job_history
@@ -44,6 +45,14 @@ def is_triage_command() -> bool:
     return len(sys.argv) > 1 and sys.argv[1].lower() == "mark"
 
 
+def is_triage_view_command() -> bool:
+    return len(sys.argv) == 2 and sys.argv[1].lower() in {
+        "saved",
+        "applied",
+        "dismissed",
+    }
+
+
 def handle_triage_command() -> None:
     if len(sys.argv) != 4:
         print("Usage: python main.py mark <job_id> <saved|dismissed|applied>")
@@ -51,6 +60,32 @@ def handle_triage_command() -> None:
 
     result = set_job_triage_state(sys.argv[2], sys.argv[3])
     print(result["message"])
+
+
+def get_empty_triage_message(state: str) -> str:
+    return f"No {state} jobs."
+
+
+def print_triage_jobs(state: str, jobs: list[dict]) -> None:
+    if not jobs:
+        print(get_empty_triage_message(state))
+        return
+
+    for job in jobs:
+        print(f"ID: {get_job_short_id(job)}")
+        print(f"Company: {job.get('company', '')}")
+        print(f"Title: {job.get('title', '')}")
+        print(f"Location: {job.get('matched_location', 'Unknown')}")
+        print(f"Matched keyword: {job.get('matched_keyword', 'Unknown')}")
+        print(f"URL: {job.get('url', '')}")
+        print(f"First seen: {job.get('first_seen', '')}")
+        print(f"Last seen: {job.get('last_seen', '')}")
+        print()
+
+
+def handle_triage_view_command() -> None:
+    state = sys.argv[1].lower()
+    print_triage_jobs(state, get_jobs_by_triage_state(state))
 
 
 def get_companies_to_scan():
@@ -217,6 +252,10 @@ def main():
 
     if is_triage_command():
         handle_triage_command()
+        return
+
+    if is_triage_view_command():
+        handle_triage_view_command()
         return
 
     companies_to_scan = get_companies_to_scan()

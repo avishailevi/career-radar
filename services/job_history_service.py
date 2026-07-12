@@ -126,6 +126,40 @@ def is_dismissed_job(job: dict) -> bool:
     return job.get("triage_state") == "dismissed"
 
 
+def sort_triage_jobs(jobs: list[dict]) -> list[dict]:
+    jobs_by_name = sorted(
+        jobs,
+        key=lambda job: (
+            normalize_identifier_part(job.get("company")),
+            normalize_identifier_part(job.get("title")),
+        ),
+    )
+    return sorted(
+        jobs_by_name,
+        key=lambda job: str(job.get("last_seen", "")),
+        reverse=True,
+    )
+
+
+def get_jobs_by_triage_state(
+    state: str,
+    history_path: str | Path = DEFAULT_HISTORY_PATH,
+) -> list[dict]:
+    triage_state = normalize_triage_state(state)
+
+    if triage_state not in VALID_TRIAGE_STATES:
+        return []
+
+    history = load_history(history_path)
+    return sort_triage_jobs(
+        [
+            job
+            for job in history.get("jobs", [])
+            if normalize_triage_state(job.get("triage_state")) == triage_state
+        ]
+    )
+
+
 def normalize_triage_state(state: str) -> str:
     return str(state or "").strip().lower()
 
