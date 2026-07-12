@@ -7,6 +7,9 @@ from contextlib import redirect_stdout
 from companies import companies
 from scanners.scanner_factory import ScannerFactory
 from services.email_service import send_email_digest
+from services.job_history_service import get_job_short_id
+from services.job_history_service import is_dismissed_job
+from services.job_history_service import set_job_triage_state
 from services.job_history_service import update_job_history
 
 
@@ -35,6 +38,19 @@ def get_requested_company_names() -> list[str]:
                 requested_names.append(clean_name)
 
     return requested_names
+
+
+def is_triage_command() -> bool:
+    return len(sys.argv) > 1 and sys.argv[1].lower() == "mark"
+
+
+def handle_triage_command() -> None:
+    if len(sys.argv) != 4:
+        print("Usage: python main.py mark <job_id> <saved|dismissed|applied>")
+        return
+
+    result = set_job_triage_state(sys.argv[2], sys.argv[3])
+    print(result["message"])
 
 
 def get_companies_to_scan():
@@ -91,6 +107,14 @@ def sort_jobs_by_relevance(jobs: list[dict]) -> list[dict]:
             job.get("title", ""),
         ),
     )
+
+
+def get_visible_new_jobs(new_jobs: list[dict]) -> list[dict]:
+    return [
+        job
+        for job in new_jobs
+        if not is_dismissed_job(job)
+    ]
 
 
 def scan_companies(companies_to_scan: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -172,6 +196,7 @@ def print_daily_summary(
         for job in sort_jobs_by_relevance(new_jobs):
             print(f"{job['company']}")
             print(f"* {job['title']}")
+            print(f"  ID: {get_job_short_id(job)}")
             print(f"  Location: {job.get('matched_location', 'Unknown')}")
             print(f"  Matched: {job.get('matched_keyword', 'Unknown')}")
             print(f"  URL: {job['url']}")
@@ -190,6 +215,10 @@ def print_daily_summary(
 def main():
     configure_output_encoding()
 
+    if is_triage_command():
+        handle_triage_command()
+        return
+
     companies_to_scan = get_companies_to_scan()
 
     if not companies_to_scan:
@@ -200,12 +229,13 @@ def main():
 
     history_result = update_job_history(all_jobs)
     new_jobs = history_result["new_jobs"]
-    send_email_digest(new_jobs)
+    visible_new_jobs = get_visible_new_jobs(new_jobs)
+    send_email_digest(visible_new_jobs)
 
     print_daily_summary(
         companies_scanned=len(companies_to_scan),
         relevant_jobs_count=len(all_jobs),
-        new_jobs=new_jobs,
+        new_jobs=visible_new_jobs,
         previously_seen_count=history_result["previously_seen_count"],
         scan_health=scan_health,
     )
