@@ -1,6 +1,7 @@
 from html import unescape
 import json
 import re
+from urllib.parse import urlparse
 from urllib.parse import urljoin
 from urllib.request import Request
 from urllib.request import urlopen
@@ -67,15 +68,58 @@ def get_location(company: dict, job: dict) -> str | None:
     return company.get("default_location")
 
 
+def get_first_field_value(job: dict, fields: list[str]) -> str:
+    for field in fields:
+        value = clean_text(job.get(field, ""))
+        if value:
+            return value
+
+    return ""
+
+
+def is_full_url(value: str) -> bool:
+    parsed_url = urlparse(value)
+    return parsed_url.scheme in {"http", "https"} and bool(parsed_url.netloc)
+
+
 def get_job_url(company: dict, job: dict) -> str:
+    direct_url = get_first_field_value(job, company.get("url_fields", []))
+    if direct_url and is_full_url(direct_url):
+        return direct_url
+
+    relative_url = get_first_field_value(job, company.get("relative_url_fields", []))
+    if relative_url:
+        return urljoin(company["url"], relative_url)
+
     id_field = company.get("id_field", "id")
     job_id = job.get(id_field, "")
     template = company.get("url_template")
 
-    if template:
+    if template and job_id:
         return template.format(id=job_id)
 
-    return urljoin(company["url"], str(job_id))
+    if job_id:
+        return urljoin(company["url"], str(job_id))
+
+    return company["url"]
+
+
+def get_job_identity_url(company: dict, job: dict) -> str:
+    id_field = company.get("id_field", "id")
+    job_id = job.get(id_field, "")
+    template = company.get("identity_url_template")
+
+    if template and job_id:
+        return template.format(id=job_id)
+
+    return get_job_url(company, job)
+
+
+def add_identity_url(job_data: dict, identity_url: str) -> dict:
+    if identity_url != job_data["url"]:
+        job_data["identity_url"] = identity_url
+
+    return job_data
 
 
 def is_allowed_job(company: dict, job: dict) -> bool:
@@ -130,16 +174,17 @@ class StaticJsonScanner:
 
             seen_jobs.add(job_key)
             keyword_match_count += 1
+            job_data = {
+                "company": company["name"],
+                "title": title,
+                "url": get_job_url(company, job),
+                "matched_location": matched_location,
+                "matched_keyword": relevance["matched_keyword"],
+                "relevance_score": relevance["relevance_score"],
+                "match_confidence": relevance["match_confidence"],
+            }
             relevant_jobs.append(
-                {
-                    "company": company["name"],
-                    "title": title,
-                    "url": get_job_url(company, job),
-                    "matched_location": matched_location,
-                    "matched_keyword": relevance["matched_keyword"],
-                    "relevance_score": relevance["relevance_score"],
-                    "match_confidence": relevance["match_confidence"],
-                }
+                add_identity_url(job_data, get_job_identity_url(company, job))
             )
 
         if debug:

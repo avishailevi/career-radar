@@ -96,7 +96,7 @@ Nova – Partial – uses GenericScanner; needs real job page verification.
 SolarEdge – Partial – uses GenericScanner; needs real job page verification.
 Rafael – Partial – uses GenericScanner; needs real job page verification.
 IAI – Partial – uses GenericScanner; needs real job page verification.
-Elbit – Partial – uses GenericScanner; needs real job page verification.
+Elbit – Supported – static JSON / direct job detail links verified.
 
 Current next step
 

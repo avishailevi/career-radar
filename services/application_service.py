@@ -10,7 +10,7 @@ from companies import companies
 from scanners.scanner_factory import ScannerFactory
 from services.email_service import send_email_digest
 from services.job_history_service import DEFAULT_HISTORY_PATH
-from services.job_history_service import generate_job_id
+from services.job_history_service import generate_job_id_for_job
 from services.job_history_service import get_jobs_by_ids
 from services.job_history_service import get_jobs_by_triage_state
 from services.job_history_service import get_latest_scan
@@ -140,7 +140,7 @@ def get_stable_job_ids(jobs: list[dict]) -> list[str]:
     seen_job_ids = set()
 
     for job in jobs:
-        job_id = generate_job_id(job["company"], job["title"], job["url"])
+        job_id = generate_job_id_for_job(job)
 
         if job_id in seen_job_ids:
             continue
