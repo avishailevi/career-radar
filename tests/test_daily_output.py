@@ -107,6 +107,75 @@ class DailyOutputTest(unittest.TestCase):
         scan_companies.assert_not_called()
         self.assertIn("Marked abc12345 as saved", output.getvalue())
 
+    def test_saved_command_prints_saved_jobs_without_scanning(self):
+        output = io.StringIO()
+        jobs = [
+            {
+                "job_id": "1234567890abcdef",
+                "company": "Apple",
+                "title": "Physical Design Engineer",
+                "url": "https://apple.test/1",
+                "matched_keyword": "ASIC",
+                "matched_location": "Israel",
+                "first_seen": "2026-07-10T06:00:00+00:00",
+                "last_seen": "2026-07-12T06:00:00+00:00",
+            }
+        ]
+
+        with patch("main.sys.argv", ["main.py", "saved"]):
+            with patch("main.get_jobs_by_triage_state", return_value=jobs) as get_jobs:
+                with patch("main.scan_companies") as scan_companies:
+                    with redirect_stdout(output):
+                        main.main()
+
+        get_jobs.assert_called_once_with("saved")
+        scan_companies.assert_not_called()
+        text = output.getvalue()
+        self.assertIn("ID: 12345678", text)
+        self.assertIn("Company: Apple", text)
+        self.assertIn("Title: Physical Design Engineer", text)
+        self.assertIn("Location: Israel", text)
+        self.assertIn("Matched keyword: ASIC", text)
+        self.assertIn("URL: https://apple.test/1", text)
+        self.assertIn("First seen: 2026-07-10T06:00:00+00:00", text)
+        self.assertIn("Last seen: 2026-07-12T06:00:00+00:00", text)
+
+    def test_applied_command_empty_state_without_scanning(self):
+        output = io.StringIO()
+
+        with patch("main.sys.argv", ["main.py", "applied"]):
+            with patch("main.get_jobs_by_triage_state", return_value=[]):
+                with patch("main.scan_companies") as scan_companies:
+                    with redirect_stdout(output):
+                        main.main()
+
+        scan_companies.assert_not_called()
+        self.assertEqual(output.getvalue().strip(), "No applied jobs.")
+
+    def test_dismissed_command_empty_state_without_scanning(self):
+        output = io.StringIO()
+
+        with patch("main.sys.argv", ["main.py", "dismissed"]):
+            with patch("main.get_jobs_by_triage_state", return_value=[]):
+                with patch("main.scan_companies") as scan_companies:
+                    with redirect_stdout(output):
+                        main.main()
+
+        scan_companies.assert_not_called()
+        self.assertEqual(output.getvalue().strip(), "No dismissed jobs.")
+
+    def test_saved_command_empty_state_without_scanning(self):
+        output = io.StringIO()
+
+        with patch("main.sys.argv", ["main.py", "saved"]):
+            with patch("main.get_jobs_by_triage_state", return_value=[]):
+                with patch("main.scan_companies") as scan_companies:
+                    with redirect_stdout(output):
+                        main.main()
+
+        scan_companies.assert_not_called()
+        self.assertEqual(output.getvalue().strip(), "No saved jobs.")
+
     def build_job(self, company, title, confidence, score):
         slug = title.lower().replace(" ", "-")
         return {

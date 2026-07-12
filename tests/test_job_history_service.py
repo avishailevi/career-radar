@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from services.job_history_service import generate_job_id
+from services.job_history_service import get_jobs_by_triage_state
 from services.job_history_service import set_job_triage_state
 from services.job_history_service import update_job_history
 
@@ -211,6 +212,78 @@ class JobHistoryServiceTest(unittest.TestCase):
         self.assertTrue(result["updated"])
         self.assertEqual(self.find_job(self.read_history(), "Apple")["triage_state"], "saved")
 
+    def test_get_jobs_by_triage_state_filters_saved_applied_and_dismissed(self):
+        self.write_history(
+            [
+                self.build_history_job("Apple", "Saved Job", "saved"),
+                self.build_history_job("NVIDIA", "Applied Job", "applied"),
+                self.build_history_job("Qualcomm", "Dismissed Job", "dismissed"),
+                self.build_history_job("Intel", "Unmarked Job", ""),
+            ]
+        )
+
+        self.assertEqual(
+            [job["company"] for job in get_jobs_by_triage_state("saved", self.history_path)],
+            ["Apple"],
+        )
+        self.assertEqual(
+            [job["company"] for job in get_jobs_by_triage_state("applied", self.history_path)],
+            ["NVIDIA"],
+        )
+        self.assertEqual(
+            [job["company"] for job in get_jobs_by_triage_state("dismissed", self.history_path)],
+            ["Qualcomm"],
+        )
+
+    def test_get_jobs_by_triage_state_orders_by_newest_last_seen_then_company_title(self):
+        self.write_history(
+            [
+                self.build_history_job(
+                    "NVIDIA",
+                    "Z Job",
+                    "saved",
+                    last_seen="2026-07-10T06:00:00+00:00",
+                ),
+                self.build_history_job(
+                    "Apple",
+                    "B Job",
+                    "saved",
+                    last_seen="2026-07-11T06:00:00+00:00",
+                ),
+                self.build_history_job(
+                    "Apple",
+                    "A Job",
+                    "saved",
+                    last_seen="2026-07-11T06:00:00+00:00",
+                ),
+                self.build_history_job(
+                    "Qualcomm",
+                    "Newest Job",
+                    "saved",
+                    last_seen="2026-07-12T06:00:00+00:00",
+                ),
+            ]
+        )
+
+        jobs = get_jobs_by_triage_state("saved", self.history_path)
+
+        self.assertEqual(
+            [(job["company"], job["title"]) for job in jobs],
+            [
+                ("Qualcomm", "Newest Job"),
+                ("Apple", "A Job"),
+                ("Apple", "B Job"),
+                ("NVIDIA", "Z Job"),
+            ],
+        )
+
+    def test_get_jobs_by_triage_state_ignores_old_unmarked_records(self):
+        job = self.build_history_job("Apple", "Old Job", "")
+        del job["triage_state"]
+        self.write_history([job])
+
+        self.assertEqual(get_jobs_by_triage_state("saved", self.history_path), [])
+
     def test_invalid_job_id_and_state_do_not_corrupt_history(self):
         jobs = [
             self.build_job("Apple", "Physical Design Engineer", "https://apple.test/1"),
@@ -237,6 +310,31 @@ class JobHistoryServiceTest(unittest.TestCase):
             "matched_keyword": "ASIC",
             "matched_location": "Israel",
         }
+
+    def build_history_job(
+        self,
+        company,
+        title,
+        triage_state,
+        last_seen="2026-07-09T06:00:00+00:00",
+    ):
+        url = f"https://{company.lower()}.test/{title.lower().replace(' ', '-')}"
+        return {
+            "job_id": generate_job_id(company, title, url),
+            "company": company,
+            "title": title,
+            "url": url,
+            "matched_keyword": "ASIC",
+            "matched_location": "Israel",
+            "triage_state": triage_state,
+            "first_seen": "2026-07-08T06:00:00+00:00",
+            "last_seen": last_seen,
+        }
+
+    def write_history(self, jobs):
+        self.history_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.history_path.open("w", encoding="utf-8") as history_file:
+            json.dump({"jobs": jobs}, history_file)
 
     def read_history(self):
         with self.history_path.open("r", encoding="utf-8") as history_file:
