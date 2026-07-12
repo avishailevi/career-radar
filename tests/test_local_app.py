@@ -18,7 +18,24 @@ class LocalAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No new jobs from the latest scan.", response.data)
         self.assertIn(b'href="/relevant"', response.data)
+        self.assertIn(b'href="/"', response.data)
         self.assertIn(b"Relevant jobs", response.data)
+        self.assertIn(b"New jobs", response.data)
+        self.assertNotIn(b'<a class="summary-card summary-link" href="">', response.data)
+
+    def test_summary_cards_navigation_does_not_scan(self):
+        with patch("local_app.run_scan") as run_scan:
+            with patch("local_app.get_latest_new_jobs", return_value=[]):
+                with patch("local_app.get_latest_scan_summary", return_value=self.summary()):
+                    with patch("local_app.get_scan_status", return_value=self.status()):
+                        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.count(b'class="summary-card summary-link"'), 2)
+        self.assertIn(b'<span>Companies scanned</span>', response.data)
+        self.assertIn(b'href="/"', response.data)
+        self.assertIn(b'href="/relevant"', response.data)
+        run_scan.assert_not_called()
 
     def test_relevant_view_uses_local_history_without_running_scan(self):
         jobs = [
