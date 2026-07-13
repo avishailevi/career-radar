@@ -588,11 +588,9 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 if card_text:
                     text_to_check = f"{text_to_check} {card_text}"
 
-                listing_location = find_matching_location(text_to_check)
                 should_verify_detail = (
                     read_detail_pages
                     and detail_page_count < max_detail_pages
-                    and listing_location is not None
                 )
 
                 if should_verify_detail:
@@ -747,7 +745,6 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
         print(f"  Duplicate jobs filtered: {duplicate_job_count}")
 
         if read_detail_pages:
-            print(f"  Detail pages checked: {detail_page_count}")
             print(f"  Detail pages attempted: {detail_page_count}")
             print(f"  Detail pages verified: {detail_verified_count}")
             print(f"  Detail pages failed: {detail_failed_count}")

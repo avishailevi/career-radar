@@ -80,24 +80,31 @@ detail_verified – המשרה סוננה בעזרת תוכן שנקרא מדף 
 listing_fallback – המשרה סוננה רק מטקסט של רשימת משרות או כרטיס משרה. זה שימושי, אבל לא מספיק ל-Supported.
 detail_failed – ניסיון קריאת דף המשרה נכשל או הגיע לדף לא תקין/גנרי.
 
+Audit browser classification:
+
+SUPPORTED – כל המשרות שחזרו מסורק browser הן detail_verified.
+MIXED_VERIFICATION – יש לפחות משרה אחת detail_verified ולפחות משרה אחת listing_fallback או detail_failed.
+FALLBACK_ONLY – כל המשרות שחזרו מסורק browser הגיעו מ-listing/card fallback.
+API/feed מובנים כמו static_json, Eightfold, Comeet ו-Getro נשארים Supported כאשר הם מחזירים משרות רלוונטיות ממקור מובנה ואמין.
+
 Current matrix:
 
-NVIDIA – Partial – Workday detail page read works, but latest audit found no relevant detail-verified job in the checked candidates.
-Apple – Supported – Apple careers / detail-verified relevant jobs.
-Broadcom – Partial – Workday listing fallback only; no Israel/location matches in checked candidates.
+NVIDIA – Partial – Workday detail pages are attempted and verified, but latest audit found no Israel/location match in checked candidates.
+Apple – Partial – Apple careers returns mixed verification: some detail_verified jobs and some listing_fallback jobs.
+Broadcom – Partial – Workday detail pages are now attempted despite missing listing locations, but checked detail pages are non-Israel.
 Intel – Partial – Workday returns relevant listing-fallback jobs, but latest audit found no detail-verified relevant match.
 Microsoft – Partial – Microsoft scanner reaches some detail pages, but latest audit found no relevant keyword match.
-Google – Supported – Google careers / detail-verified relevant jobs.
+Google – Partial – Google careers returns mixed verification: detail_verified relevant jobs plus fallback-only returned jobs.
 Amazon – Supported – Amazon jobs / detail-verified relevant jobs.
 Qualcomm – Supported – Eightfold structured API.
-Marvell – Partial – Workday listing fallback only; no Israel/location matches in checked candidates.
+Marvell – Partial – Workday detail pages are now attempted despite missing listing locations, but checked detail pages are non-Israel.
 Cadence – Partial – Dejobs listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
 Synopsys – Partial – Synopsys listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
 Tower Semiconductor – Supported – Tower detail pages verified with relevant jobs.
-Mobileye – Supported – Mobileye detail pages verified with relevant jobs.
+Mobileye – Partial – Mobileye returns fallback-only relevant jobs in latest audit; detail pages were attempted but not relevant-verified.
 Nuvoton – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
 Applied Materials – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
-KLA – Supported – Workday detail pages verified with relevant jobs.
+KLA – Partial – Workday returns mixed verification: one detail_verified relevant job plus fallback-only returned jobs.
 Nova – Supported – Comeet structured API.
 SolarEdge – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
 Rafael – Supported – Getro structured API.
@@ -256,6 +263,8 @@ Change Log
 - תוקן שורש הבעיה בקריאת דפי detail: הסורק השתמש ב-browser default context ואז ניסה לפתוח דפי detail מאותו context, מה שגרם ל-Playwright להחזיר "Please use browser.new_context()".
 - audit_companies.py עודכן להציג Detail verified, Fallbacks ו-Detail skipped, ולא לסמן סורקי browser/listing כ-Supported ללא עדות detail-verified.
 - מטריצת החברות עודכנה לפי audit מלא עם אימות detail.
+- Review fix: קריאת detail כבר לא תלויה בזיהוי location ברמת listing/card, ולכן Broadcom ו-Marvell מנסים דפי detail גם כשאין location ברשימה.
+- Review fix: סיווג audit לסורקי browser נקבע לפי verification_state של כל המשרות שחזרו: SUPPORTED רק כאשר כולן detail_verified, MIXED_VERIFICATION כאשר יש שילוב, ו-FALLBACK_ONLY כאשר אין אף detail_verified.
 
 2026-07-08
 - GitHub הוגדר כמקור האמת.

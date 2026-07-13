@@ -22,7 +22,6 @@ COUNTER_PATTERNS = {
     "location_matches": r"Location matches:\s*(\d+)",
     "keyword_matches": r"Keyword matches:\s*(\d+)",
     "relevant_jobs": r"Relevant jobs:\s*(\d+)",
-    "detail_pages_checked": r"Detail pages checked:\s*(\d+)",
     "detail_pages_attempted": r"Detail pages attempted:\s*(\d+)",
     "detail_pages_verified": r"Detail pages verified:\s*(\d+)",
     "detail_pages_failed": r"Detail pages failed:\s*(\d+)",
@@ -32,6 +31,8 @@ COUNTER_PATTERNS = {
     "listing_fallbacks_used": r"Listing fallbacks used:\s*(\d+)",
     "detail_keyword_matches": r"Detail keyword matches:\s*(\d+)",
 }
+
+DETAIL_VERIFIED = "detail_verified"
 
 
 def get_requested_company_names() -> list[str]:
@@ -91,8 +92,16 @@ def classify_result(
         if platform in STRUCTURED_PLATFORMS:
             return "SUPPORTED"
 
-        if counters["detail_keyword_matches"] > 0:
+        verification_states = [
+            job.get("verification_state")
+            for job in jobs
+        ]
+
+        if all(state == DETAIL_VERIFIED for state in verification_states):
             return "SUPPORTED"
+
+        if any(state == DETAIL_VERIFIED for state in verification_states):
+            return "MIXED_VERIFICATION"
 
         return "FALLBACK_ONLY"
 
@@ -114,6 +123,9 @@ def suggest_next_action(status: str, platform: str) -> str:
 
     if status == "FALLBACK_ONLY":
         return "Returned jobs only from listing/card text; verify real job-detail page extraction."
+
+    if status == "MIXED_VERIFICATION":
+        return "Some returned jobs are detail-verified; remaining jobs still depend on fallback text."
 
     if status == "ERROR":
         return "Fix scanner crash or page loading error."

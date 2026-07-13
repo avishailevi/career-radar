@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -10,6 +11,7 @@ from scanner import LISTING_FALLBACK
 from scanner import DetailReadResult
 from scanner import get_job_detail_result
 from scanner import get_job_verification_state
+from scanner import scan_company
 
 
 class FakeBodyLocator:
@@ -78,6 +80,134 @@ class FakeContext:
         return self.page
 
 
+class FakeScanLink:
+    def __init__(self, title: str, href: str):
+        self.title = title
+        self.href = href
+
+    def inner_text(self) -> str:
+        return self.title
+
+    def get_attribute(self, name: str) -> str | None:
+        if name == "href":
+            return self.href
+
+        return None
+
+
+class FakeScanLocator:
+    def __init__(self, page, selector: str):
+        self.page = page
+        self.selector = selector
+        self.first = self
+
+    def count(self) -> int:
+        if self.selector == "base":
+            return 0
+
+        return 1
+
+    def all(self) -> list[FakeScanLink]:
+        if self.selector == "a":
+            return self.page.links
+
+        return []
+
+    def inner_text(self, timeout: int) -> str:
+        return self.page.body_text
+
+    def get_attribute(self, name: str) -> str | None:
+        return None
+
+
+class FakeScanPage:
+    def __init__(
+        self,
+        *,
+        url: str,
+        title: str,
+        body_text: str,
+        links: list[FakeScanLink] | None = None,
+    ):
+        self.url = url
+        self.page_title = title
+        self.body_text = body_text
+        self.links = links or []
+        self.closed = False
+
+    def goto(self, url: str, wait_until: str, timeout: int) -> None:
+        self.url = url
+
+    def wait_for_load_state(self, state: str, timeout: int) -> None:
+        return None
+
+    def wait_for_timeout(self, timeout: int) -> None:
+        return None
+
+    def wait_for_selector(self, selector: str, timeout: int) -> None:
+        return None
+
+    def wait_for_function(self, expression: str, arg: list, timeout: int) -> None:
+        return None
+
+    def locator(self, selector: str) -> FakeScanLocator:
+        return FakeScanLocator(self, selector)
+
+    def evaluate(self, script: str) -> str:
+        return self.body_text
+
+    def title(self) -> str:
+        return self.page_title
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class FakeScanContext:
+    def __init__(self, pages: list[FakeScanPage]):
+        self.pages = pages
+        self.new_page_calls = 0
+
+    def new_page(self) -> FakeScanPage:
+        page = self.pages[self.new_page_calls]
+        page.context = self
+        self.new_page_calls += 1
+        return page
+
+    def close(self) -> None:
+        return None
+
+
+class FakeScanBrowser:
+    def __init__(self, context: FakeScanContext):
+        self.context = context
+
+    def new_context(self) -> FakeScanContext:
+        return self.context
+
+    def close(self) -> None:
+        return None
+
+
+class FakeScanChromium:
+    def __init__(self, browser: FakeScanBrowser):
+        self.browser = browser
+
+    def launch(self, headless: bool) -> FakeScanBrowser:
+        return self.browser
+
+
+class FakeSyncPlaywright:
+    def __init__(self, context: FakeScanContext):
+        self.chromium = FakeScanChromium(FakeScanBrowser(context))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+
 def meaningful_body(title: str) -> str:
     return (
         f"{title}\n"
@@ -96,7 +226,6 @@ def counters(**overrides):
         "location_matches": 0,
         "keyword_matches": 0,
         "relevant_jobs": 0,
-        "detail_pages_checked": 0,
         "detail_pages_attempted": 0,
         "detail_pages_verified": 0,
         "detail_pages_failed": 0,
@@ -208,7 +337,12 @@ class BrowserDetailVerificationTest(unittest.TestCase):
 
     def test_audit_does_not_mark_fallback_only_browser_scan_supported(self):
         status = classify_result(
-            jobs=[{"title": "ASIC Engineer"}],
+            jobs=[
+                {
+                    "title": "ASIC Engineer",
+                    "verification_state": LISTING_FALLBACK,
+                }
+            ],
             counters=counters(
                 detail_pages_attempted=2,
                 detail_pages_failed=2,
@@ -220,9 +354,18 @@ class BrowserDetailVerificationTest(unittest.TestCase):
 
         self.assertEqual(status, "FALLBACK_ONLY")
 
-    def test_audit_supports_browser_scan_with_detail_verified_match(self):
+    def test_audit_supports_browser_scan_when_all_returned_jobs_are_verified(self):
         status = classify_result(
-            jobs=[{"title": "ASIC Engineer"}],
+            jobs=[
+                {
+                    "title": "ASIC Engineer",
+                    "verification_state": DETAIL_VERIFIED,
+                },
+                {
+                    "title": "Board Design Engineer",
+                    "verification_state": DETAIL_VERIFIED,
+                },
+            ],
             counters=counters(
                 detail_pages_attempted=2,
                 detail_pages_verified=1,
@@ -232,6 +375,24 @@ class BrowserDetailVerificationTest(unittest.TestCase):
         )
 
         self.assertEqual(status, "SUPPORTED")
+
+    def test_audit_marks_mixed_browser_verification_separately(self):
+        status = classify_result(
+            jobs=[
+                {
+                    "title": "ASIC Engineer",
+                    "verification_state": DETAIL_VERIFIED,
+                },
+                {
+                    "title": "Board Design Engineer",
+                    "verification_state": LISTING_FALLBACK,
+                },
+            ],
+            counters=counters(),
+            error=None,
+        )
+
+        self.assertEqual(status, "MIXED_VERIFICATION")
 
     def test_static_json_and_api_backed_classification_remains_supported(self):
         for platform in ["static_json", "eightfold", "comeet", "getro"]:
@@ -247,13 +408,47 @@ class BrowserDetailVerificationTest(unittest.TestCase):
 
     def test_browser_listing_without_detail_evidence_is_fallback_only(self):
         status = classify_result(
-            jobs=[{"title": "ASIC Engineer"}],
+            jobs=[
+                {
+                    "title": "ASIC Engineer",
+                    "verification_state": LISTING_FALLBACK,
+                }
+            ],
             counters=counters(),
             error=None,
             platform="custom",
         )
 
         self.assertEqual(status, "FALLBACK_ONLY")
+
+    def test_scan_attempts_detail_when_listing_has_no_location(self):
+        title = "ASIC Engineer"
+        listing_page = FakeScanPage(
+            url="https://careers.example.com/jobs",
+            title="Careers",
+            body_text=f"{title}\nEngineering role without location",
+            links=[FakeScanLink(title, "/job/asic-engineer")],
+        )
+        detail_page = FakeScanPage(
+            url="https://careers.example.com/job/asic-engineer",
+            title=title,
+            body_text=meaningful_body(title),
+        )
+        context = FakeScanContext([listing_page, detail_page])
+        company = {
+            "name": "Example",
+            "platform": "apple",
+            "url": "https://careers.example.com/jobs",
+        }
+
+        with patch("scanner.sync_playwright", return_value=FakeSyncPlaywright(context)):
+            jobs = scan_company(company)
+
+        self.assertEqual(context.new_page_calls, 2)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["title"], title)
+        self.assertEqual(jobs[0]["matched_location"], "Israel")
+        self.assertEqual(jobs[0]["verification_state"], DETAIL_VERIFIED)
 
 
 if __name__ == "__main__":
