@@ -10,16 +10,29 @@ from scanners.scanner_factory import ScannerFactory
 
 
 REPORTS_DIR = Path("reports")
+STRUCTURED_PLATFORMS = {
+    "comeet",
+    "eightfold",
+    "getro",
+    "static_json",
+}
 
 COUNTER_PATTERNS = {
     "job_like_urls": r"Job-like URLs:\s*(\d+)",
     "location_matches": r"Location matches:\s*(\d+)",
     "keyword_matches": r"Keyword matches:\s*(\d+)",
     "relevant_jobs": r"Relevant jobs:\s*(\d+)",
-    "detail_pages_checked": r"Detail pages checked:\s*(\d+)",
+    "detail_pages_attempted": r"Detail pages attempted:\s*(\d+)",
+    "detail_pages_verified": r"Detail pages verified:\s*(\d+)",
+    "detail_pages_failed": r"Detail pages failed:\s*(\d+)",
+    "detail_pages_skipped": r"Detail pages skipped:\s*(\d+)",
     "empty_detail_pages": r"Empty detail pages:\s*(\d+)",
     "page_text_fallbacks": r"Page text fallbacks:\s*(\d+)",
+    "listing_fallbacks_used": r"Listing fallbacks used:\s*(\d+)",
+    "detail_keyword_matches": r"Detail keyword matches:\s*(\d+)",
 }
+
+DETAIL_VERIFIED = "detail_verified"
 
 
 def get_requested_company_names() -> list[str]:
@@ -66,12 +79,31 @@ def parse_debug_counters(output: str) -> dict[str, int]:
     }
 
 
-def classify_result(jobs: list[dict], counters: dict[str, int], error: str | None) -> str:
+def classify_result(
+    jobs: list[dict],
+    counters: dict[str, int],
+    error: str | None,
+    platform: str = "generic",
+) -> str:
     if error:
         return "ERROR"
 
     if jobs:
-        return "SUPPORTED"
+        if platform in STRUCTURED_PLATFORMS:
+            return "SUPPORTED"
+
+        verification_states = [
+            job.get("verification_state")
+            for job in jobs
+        ]
+
+        if all(state == DETAIL_VERIFIED for state in verification_states):
+            return "SUPPORTED"
+
+        if any(state == DETAIL_VERIFIED for state in verification_states):
+            return "MIXED_VERIFICATION"
+
+        return "FALLBACK_ONLY"
 
     if counters["job_like_urls"] == 0:
         return "NO_JOB_LINKS"
@@ -88,6 +120,12 @@ def classify_result(jobs: list[dict], counters: dict[str, int], error: str | Non
 def suggest_next_action(status: str, platform: str) -> str:
     if status == "SUPPORTED":
         return "Mark as Supported after reviewing returned jobs."
+
+    if status == "FALLBACK_ONLY":
+        return "Returned jobs only from listing/card text; verify real job-detail page extraction."
+
+    if status == "MIXED_VERIFICATION":
+        return "Some returned jobs are detail-verified; remaining jobs still depend on fallback text."
 
     if status == "ERROR":
         return "Fix scanner crash or page loading error."
@@ -117,11 +155,12 @@ def audit_company(company: dict) -> dict:
 
     output = output_buffer.getvalue()
     counters = parse_debug_counters(output)
-    status = classify_result(jobs, counters, error)
+    platform = company.get("platform", "generic")
+    status = classify_result(jobs, counters, error, platform)
 
     return {
         "company": company["name"],
-        "platform": company.get("platform", "generic"),
+        "platform": platform,
         "status": status,
         "jobs": jobs,
         "error": error,
@@ -129,7 +168,7 @@ def audit_company(company: dict) -> dict:
         "counters": counters,
         "next_action": suggest_next_action(
             status,
-            company.get("platform", "generic"),
+            platform,
         ),
     }
 
@@ -147,8 +186,8 @@ def build_report(results: list[dict]) -> str:
         "",
         "## Summary",
         "",
-        "| Company | Platform | Status | Jobs | Job-like URLs | Location matches | Keyword matches | Next action |",
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "| Company | Platform | Status | Jobs | Detail verified | Fallbacks | Detail skipped | Job-like URLs | Location matches | Keyword matches | Next action |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
 
     for result in results:
@@ -159,6 +198,9 @@ def build_report(results: list[dict]) -> str:
             f"{result['platform']} | "
             f"{result['status']} | "
             f"{len(result['jobs'])} | "
+            f"{counters['detail_keyword_matches']} | "
+            f"{counters['listing_fallbacks_used']} | "
+            f"{counters['detail_pages_skipped']} | "
             f"{counters['job_like_urls']} | "
             f"{counters['location_matches']} | "
             f"{counters['keyword_matches']} | "
@@ -178,6 +220,8 @@ def build_report(results: list[dict]) -> str:
             lines.append(f"- {job['title']}")
             lines.append(f"  - Matched: {job['matched_keyword']}")
             lines.append(f"  - Location: {job.get('matched_location', 'Unknown')}")
+            if "verification_state" in job:
+                lines.append(f"  - Verification: {job['verification_state']}")
             lines.append(f"  - URL: {job['url']}")
 
         lines.append("")
