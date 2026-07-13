@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from urllib.parse import urljoin
 
 from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from services.filter_service import POSSIBLE_JOB_TEXT_HINTS
@@ -20,6 +22,37 @@ from services.platform_service import should_read_detail_pages
 
 DEBUG_SAMPLE_LIMIT = 5
 JOB_CARD_CONTEXT_LINES = 6
+MIN_DETAIL_TEXT_LENGTH = 300
+MAX_DETAIL_PAGES_PER_COMPANY = 10
+
+DETAIL_VERIFIED = "detail_verified"
+LISTING_FALLBACK = "listing_fallback"
+DETAIL_FAILED = "detail_failed"
+
+DETAIL_DESCRIPTION_HINTS = [
+    "about the job",
+    "basic qualifications",
+    "description",
+    "job description",
+    "job requisition",
+    "locations",
+    "minimum qualifications",
+    "qualifications",
+    "requirements",
+    "responsibilities",
+    "what you'll be doing",
+    "we are looking",
+]
+
+
+@dataclass
+class DetailReadResult:
+    text: str
+    requested_url: str
+    final_url: str
+    status: str
+    page_title: str = ""
+    error: str = ""
 
 
 def add_debug_sample(samples: list[dict], sample: dict) -> None:
@@ -101,7 +134,177 @@ def get_job_list_link(page, link_texts: list[str]):
     return None, None, None
 
 
-def get_job_detail_text(context, url: str) -> str:
+def normalize_for_match(text: str) -> str:
+    return " ".join(text.lower().replace("-", " ").replace("–", " ").split())
+
+
+def title_matches_detail(expected_title: str, page_title: str, body_text: str) -> bool:
+    expected = normalize_for_match(expected_title)
+    title = normalize_for_match(page_title)
+    body = normalize_for_match(body_text)
+
+    if not expected:
+        return False
+
+    if expected in title or expected in body:
+        return True
+
+    significant_words = [
+        word
+        for word in expected.split()
+        if len(word) > 2
+    ]
+
+    if len(significant_words) < 2:
+        return False
+
+    matched_words = sum(
+        1
+        for word in significant_words
+        if word in title or word in body
+    )
+
+    return matched_words >= max(2, len(significant_words) - 1)
+
+
+def has_detail_description_signal(body_text: str) -> bool:
+    text = body_text.lower()
+    return any(hint in text for hint in DETAIL_DESCRIPTION_HINTS)
+
+
+def validate_detail_read_result(
+    result: DetailReadResult,
+    expected_title: str,
+) -> DetailReadResult:
+    text = result.text.strip()
+
+    if not text:
+        return DetailReadResult(
+            text="",
+            requested_url=result.requested_url,
+            final_url=result.final_url,
+            status="empty_body",
+            page_title=result.page_title,
+            error=result.error,
+        )
+
+    if result.final_url and not is_job_url(result.final_url):
+        return DetailReadResult(
+            text=text,
+            requested_url=result.requested_url,
+            final_url=result.final_url,
+            status="redirected_away_from_job_detail",
+            page_title=result.page_title,
+            error=result.error,
+        )
+
+    if len(text) < MIN_DETAIL_TEXT_LENGTH:
+        return DetailReadResult(
+            text=text,
+            requested_url=result.requested_url,
+            final_url=result.final_url,
+            status="invalid_or_generic_page",
+            page_title=result.page_title,
+            error=result.error,
+        )
+
+    if not title_matches_detail(expected_title, result.page_title, text):
+        return DetailReadResult(
+            text=text,
+            requested_url=result.requested_url,
+            final_url=result.final_url,
+            status="invalid_or_generic_page",
+            page_title=result.page_title,
+            error=result.error,
+        )
+
+    if not has_detail_description_signal(text):
+        return DetailReadResult(
+            text=text,
+            requested_url=result.requested_url,
+            final_url=result.final_url,
+            status="invalid_or_generic_page",
+            page_title=result.page_title,
+            error=result.error,
+        )
+
+    return DetailReadResult(
+        text=text,
+        requested_url=result.requested_url,
+        final_url=result.final_url,
+        status="verified",
+        page_title=result.page_title,
+        error=result.error,
+    )
+
+
+def get_page_body_text(page) -> str:
+    try:
+        page.wait_for_selector("body", timeout=10000)
+    except PlaywrightError:
+        return ""
+
+    try:
+        return page.locator("body").inner_text(timeout=10000).strip()
+    except PlaywrightError:
+        pass
+
+    try:
+        body_text = page.evaluate("() => document.body ? document.body.innerText : ''")
+        return body_text.strip()
+    except PlaywrightError:
+        return ""
+
+
+def wait_for_meaningful_detail_text(page, expected_title: str) -> None:
+    expected = normalize_for_match(expected_title)
+
+    try:
+        page.wait_for_selector("body", timeout=10000)
+    except PlaywrightError:
+        return
+
+    try:
+        page.wait_for_function(
+            r"""([expectedTitle, minLength]) => {
+                const body = document.body ? document.body.innerText : '';
+                const title = document.title || '';
+                const text = `${title} ${body}`
+                    .toLowerCase()
+                    .replace(/[-–]/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                return body.trim().length >= minLength
+                    || (expectedTitle && text.includes(expectedTitle));
+            }""",
+            arg=[expected, MIN_DETAIL_TEXT_LENGTH],
+            timeout=8000,
+        )
+    except PlaywrightError:
+        pass
+
+
+def get_page_title(page) -> str:
+    try:
+        return page.title()
+    except PlaywrightError:
+        return ""
+
+
+def get_error_summary(error: Exception) -> str:
+    for line in str(error).splitlines():
+        clean_line = line.strip()
+        if clean_line:
+            return clean_line
+
+    return error.__class__.__name__
+
+
+def get_job_detail_result(
+    context,
+    url: str,
+    expected_title: str,
+) -> DetailReadResult:
     detail_page = None
 
     try:
@@ -111,17 +314,35 @@ def get_job_detail_text(context, url: str) -> str:
             wait_until="domcontentloaded",
             timeout=45000,
         )
+        wait_for_meaningful_detail_text(detail_page, expected_title)
+        result = DetailReadResult(
+            text=get_page_body_text(detail_page),
+            requested_url=url,
+            final_url=detail_page.url,
+            status="loaded",
+            page_title=get_page_title(detail_page),
+        )
+        return validate_detail_read_result(result, expected_title)
 
-        try:
-            detail_page.wait_for_load_state("networkidle", timeout=15000)
-        except PlaywrightError:
-            pass
+    except PlaywrightTimeoutError as error:
+        return DetailReadResult(
+            text="",
+            requested_url=url,
+            final_url=detail_page.url if detail_page else "",
+            status="timeout",
+            page_title=get_page_title(detail_page) if detail_page else "",
+            error=get_error_summary(error),
+        )
 
-        detail_page.wait_for_timeout(2000)
-        return detail_page.locator("body").inner_text(timeout=10000).strip()
-
-    except PlaywrightError:
-        return ""
+    except PlaywrightError as error:
+        return DetailReadResult(
+            text="",
+            requested_url=url,
+            final_url=detail_page.url if detail_page else "",
+            status="navigation_error",
+            page_title=get_page_title(detail_page) if detail_page else "",
+            error=get_error_summary(error),
+        )
 
     finally:
         if detail_page:
@@ -129,6 +350,23 @@ def get_job_detail_text(context, url: str) -> str:
                 detail_page.close()
             except PlaywrightError:
                 pass
+
+
+def get_job_verification_state(
+    read_detail_pages: bool,
+    detail_result: DetailReadResult | None,
+    used_listing_fallback: bool,
+) -> str:
+    if detail_result and detail_result.status == "verified":
+        return DETAIL_VERIFIED
+
+    if read_detail_pages and used_listing_fallback:
+        return LISTING_FALLBACK
+
+    if read_detail_pages:
+        return DETAIL_FAILED
+
+    return LISTING_FALLBACK
 
 
 def try_follow_job_list_link(page) -> str | None:
@@ -207,24 +445,35 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
     duplicate_job_count = 0
     detail_page_count = 0
     empty_detail_page_count = 0
+    detail_verified_count = 0
+    detail_failed_count = 0
+    detail_skipped_count = 0
     page_text_fallback_count = 0
     detail_keyword_match_count = 0
+    detail_failure_reasons = {}
     page_url = ""
     page_title = ""
     page_text = ""
     link_base_url = ""
     followed_link_text = None
     read_detail_pages = should_read_detail_pages(company)
+    max_detail_pages = company.get(
+        "max_detail_pages",
+        MAX_DETAIL_PAGES_PER_COMPANY,
+    )
 
     usable_link_samples = []
     possible_job_link_samples = []
     job_url_samples = []
     location_match_samples = []
     keyword_match_samples = []
+    detail_verified_samples = []
+    detail_failure_samples = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context()
+        page = context.new_page()
 
         print(f"\nScanning {company['name']}...")
         if debug:
@@ -239,6 +488,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
             )
         except PlaywrightError as error:
             print(f"Failed to load {company['name']}: {error}")
+            context.close()
             browser.close()
             return []
 
@@ -323,6 +573,8 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 job_url_count += 1
                 text_to_check = f"{title} {full_url} {link_text}"
                 matched_from_detail = False
+                detail_result = None
+                used_listing_fallback = False
 
                 add_debug_sample(
                     job_url_samples,
@@ -332,20 +584,72 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                     },
                 )
 
-                if read_detail_pages:
-                    detail_page_count += 1
-                    detail_text = get_job_detail_text(page.context, full_url)
+                card_text = get_job_card_text(page_text, title)
+                if card_text:
+                    text_to_check = f"{text_to_check} {card_text}"
 
-                    if detail_text:
+                listing_location = find_matching_location(text_to_check)
+                should_verify_detail = (
+                    read_detail_pages
+                    and detail_page_count < max_detail_pages
+                    and listing_location is not None
+                )
+
+                if should_verify_detail:
+                    detail_page_count += 1
+                    detail_result = get_job_detail_result(
+                        page.context,
+                        full_url,
+                        title,
+                    )
+
+                    if detail_result.status == "verified":
+                        detail_verified_count += 1
                         matched_from_detail = True
-                        text_to_check = f"{text_to_check} {detail_text}"
+                        text_to_check = f"{text_to_check} {detail_result.text}"
+
+                        add_debug_sample(
+                            detail_verified_samples,
+                            {
+                                "title": title,
+                                "requested_url": detail_result.requested_url,
+                                "final_url": detail_result.final_url,
+                                "page_title": detail_result.page_title,
+                                "body_length": len(detail_result.text),
+                                "error": detail_result.error,
+                            },
+                        )
                     else:
-                        empty_detail_page_count += 1
-                        card_text = get_job_card_text(page_text, title)
+                        detail_failed_count += 1
+                        detail_failure_reasons[detail_result.status] = (
+                            detail_failure_reasons.get(detail_result.status, 0)
+                            + 1
+                        )
+
+                        if detail_result.status == "empty_body":
+                            empty_detail_page_count += 1
+
+                        add_debug_sample(
+                            detail_failure_samples,
+                            {
+                                "title": title,
+                                "reason": detail_result.status,
+                                "requested_url": detail_result.requested_url,
+                                "final_url": detail_result.final_url,
+                                "page_title": detail_result.page_title,
+                                "body_length": len(detail_result.text),
+                            },
+                        )
 
                         if card_text:
+                            used_listing_fallback = True
                             page_text_fallback_count += 1
-                            text_to_check = f"{text_to_check} {card_text}"
+
+                elif read_detail_pages:
+                    detail_skipped_count += 1
+                    if card_text:
+                        used_listing_fallback = True
+                        page_text_fallback_count += 1
 
                 matched_location = find_matching_location(text_to_check)
 
@@ -388,6 +692,12 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 if matched_from_detail:
                     detail_keyword_match_count += 1
 
+                verification_state = get_job_verification_state(
+                    read_detail_pages,
+                    detail_result,
+                    used_listing_fallback,
+                )
+
                 add_debug_sample(
                     keyword_match_samples,
                     {
@@ -397,6 +707,7 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "matched_keyword": relevance["matched_keyword"],
                         "relevance_score": relevance["relevance_score"],
                         "match_confidence": relevance["match_confidence"],
+                        "verification_state": verification_state,
                     },
                 )
 
@@ -409,12 +720,14 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                         "matched_keyword": relevance["matched_keyword"],
                         "relevance_score": relevance["relevance_score"],
                         "match_confidence": relevance["match_confidence"],
+                        "verification_state": verification_state,
                     }
                 )
 
             except Exception:
                 continue
 
+        context.close()
         browser.close()
 
     if debug:
@@ -435,9 +748,21 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
 
         if read_detail_pages:
             print(f"  Detail pages checked: {detail_page_count}")
+            print(f"  Detail pages attempted: {detail_page_count}")
+            print(f"  Detail pages verified: {detail_verified_count}")
+            print(f"  Detail pages failed: {detail_failed_count}")
+            print(f"  Detail pages skipped: {detail_skipped_count}")
             print(f"  Empty detail pages: {empty_detail_page_count}")
             print(f"  Page text fallbacks: {page_text_fallback_count}")
+            print(f"  Listing fallbacks used: {page_text_fallback_count}")
             print(f"  Detail keyword matches: {detail_keyword_match_count}")
+
+            if detail_failure_reasons:
+                failure_summary = "; ".join(
+                    f"{reason}={count}"
+                    for reason, count in sorted(detail_failure_reasons.items())
+                )
+                print(f"  Detail failure reasons: {failure_summary}")
 
         print(f"  Keyword matches: {keyword_match_count}")
         print(f"  Relevant jobs: {len(relevant_jobs)}")
@@ -479,6 +804,27 @@ def scan_company(company: dict, debug: bool = False) -> list[dict]:
                 print(f"    - {sample['title']}")
                 print(f"      Matched location: {sample['matched_location']}")
                 print(f"      Matched keyword: {sample['matched_keyword']}")
+                print(f"      Verification: {sample['verification_state']}")
                 print(f"      {sample['url']}")
+
+        if detail_verified_samples:
+            print("  Detail verified samples:")
+            for sample in detail_verified_samples:
+                print(f"    - {sample['title']}")
+                print(f"      Final URL: {sample['final_url']}")
+                print(f"      Page title: {sample['page_title']}")
+                print(f"      Body length: {sample['body_length']}")
+                if sample["error"]:
+                    print(f"      Error: {sample['error']}")
+
+        if detail_failure_samples:
+            print("  Detail failure samples:")
+            for sample in detail_failure_samples:
+                print(f"    - {sample['title']}")
+                print(f"      Reason: {sample['reason']}")
+                print(f"      Requested URL: {sample['requested_url']}")
+                print(f"      Final URL: {sample['final_url']}")
+                print(f"      Page title: {sample['page_title']}")
+                print(f"      Body length: {sample['body_length']}")
 
     return relevant_jobs

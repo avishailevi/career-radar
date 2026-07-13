@@ -70,32 +70,38 @@ DEBUG=True כרגע כדי להבין למה חברות לא מחזירות תו
 
 Status values:
 
-Supported – הסורק נכנס לדפי משרות אמיתיים, קורא תוכן, ומחזיר משרות רלוונטיות.
-Partial – הסורק מוצא קישורים או חלק מהמידע, אבל הכניסה/החילוץ/הסינון עדיין לא אמינים.
+Supported – הסורק נכנס לדפי משרות אמיתיים וקורא תוכן משרה אמיתי, או משתמש ב-API/feed מובנה ואמין שמכיל את פרטי המשרה, ומחזיר משרות רלוונטיות.
+Partial – הסורק מוצא קישורים או חלק מהמידע, או מחזיר משרות רק מ-listing/card fallback, אבל הכניסה/החילוץ/הסינון עדיין לא אמינים מספיק.
 Unsupported – אין עדיין תמיכה אמינה או שנדרש סורק ייעודי.
+
+Verification states:
+
+detail_verified – המשרה סוננה בעזרת תוכן שנקרא מדף משרה אמיתי ואומת מול כותרת/URL/אינדיקציות תוכן.
+listing_fallback – המשרה סוננה רק מטקסט של רשימת משרות או כרטיס משרה. זה שימושי, אבל לא מספיק ל-Supported.
+detail_failed – ניסיון קריאת דף המשרה נכשל או הגיע לדף לא תקין/גנרי.
 
 Current matrix:
 
-NVIDIA – Supported – Workday / worked in previous runs.
-Apple – Supported – Apple careers / worked in previous runs.
-Broadcom – Partial – needs real job page verification.
-Intel – Supported – treated previously; re-test during regression.
-Microsoft – Supported – treated previously; re-test during regression.
-Google – Partial – has explicit GoogleScanner wrapper; needs real job page verification.
-Amazon – Partial – has explicit AmazonScanner wrapper; needs real job page verification.
-Qualcomm – Partial – uses GenericScanner; needs real job page verification.
-Marvell – Partial – Workday / needs real job page verification.
-Cadence – Partial – uses GenericScanner; needs real job page verification.
-Synopsys – Partial – uses GenericScanner; needs real job page verification.
-Tower Semiconductor – Partial – uses GenericScanner; needs real job page verification.
-Mobileye – Partial – uses GenericScanner; needs real job page verification.
-Nuvoton – Partial – uses GenericScanner; needs real job page verification.
-Applied Materials – Partial – uses GenericScanner; needs real job page verification.
-KLA – Partial – uses GenericScanner; needs real job page verification.
-Nova – Partial – uses GenericScanner; needs real job page verification.
-SolarEdge – Partial – uses GenericScanner; needs real job page verification.
-Rafael – Partial – uses GenericScanner; needs real job page verification.
-IAI – Partial – uses GenericScanner; needs real job page verification.
+NVIDIA – Partial – Workday detail page read works, but latest audit found no relevant detail-verified job in the checked candidates.
+Apple – Supported – Apple careers / detail-verified relevant jobs.
+Broadcom – Partial – Workday listing fallback only; no Israel/location matches in checked candidates.
+Intel – Partial – Workday returns relevant listing-fallback jobs, but latest audit found no detail-verified relevant match.
+Microsoft – Partial – Microsoft scanner reaches some detail pages, but latest audit found no relevant keyword match.
+Google – Supported – Google careers / detail-verified relevant jobs.
+Amazon – Supported – Amazon jobs / detail-verified relevant jobs.
+Qualcomm – Supported – Eightfold structured API.
+Marvell – Partial – Workday listing fallback only; no Israel/location matches in checked candidates.
+Cadence – Partial – Dejobs listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
+Synopsys – Partial – Synopsys listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
+Tower Semiconductor – Supported – Tower detail pages verified with relevant jobs.
+Mobileye – Supported – Mobileye detail pages verified with relevant jobs.
+Nuvoton – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
+Applied Materials – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
+KLA – Supported – Workday detail pages verified with relevant jobs.
+Nova – Supported – Comeet structured API.
+SolarEdge – Partial – Custom listing/card extraction returns useful jobs, but real detail-page verification is not yet proven.
+Rafael – Supported – Getro structured API.
+IAI – Supported – static JSON feed / structured job data.
 Elbit – Supported – static JSON / direct job detail links verified.
 
 Current next step
@@ -164,6 +170,8 @@ Definition of Done לחברה
 הסורק מזהה Keyword רלוונטי כאשר קיים.
 המשרה מופיעה תחת Relevant jobs found.
 אין Exception בהרצה נקודתית של החברה.
+אם המשרה מגיעה מסורק browser, יש להבחין בדו״ח בין detail_verified לבין listing_fallback.
+חברה לא תסומן Supported רק בגלל תוצאות listing_fallback.
 
 Regression checklist
 
@@ -241,6 +249,13 @@ v0.3 – התראות על משרות חדשות.
 v1.0 – מערכת יציבה שרצה אוטומטית ומדווחת רק על משרות חדשות ורלוונטיות.
 
 Change Log
+
+2026-07-13
+- Milestone 17 הוסיף תוצאת קריאת detail מובנית במקום מחרוזת ריקה לא ברורה.
+- נוספה הבחנה בין detail_verified, listing_fallback ו-detail_failed.
+- תוקן שורש הבעיה בקריאת דפי detail: הסורק השתמש ב-browser default context ואז ניסה לפתוח דפי detail מאותו context, מה שגרם ל-Playwright להחזיר "Please use browser.new_context()".
+- audit_companies.py עודכן להציג Detail verified, Fallbacks ו-Detail skipped, ולא לסמן סורקי browser/listing כ-Supported ללא עדות detail-verified.
+- מטריצת החברות עודכנה לפי audit מלא עם אימות detail.
 
 2026-07-08
 - GitHub הוגדר כמקור האמת.
