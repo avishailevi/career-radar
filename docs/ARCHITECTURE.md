@@ -85,7 +85,7 @@ scanners/
 Many companies use the same job platforms. We should reuse scanner logic by platform rather than by company.
 
 Examples:
-- Intel, NVIDIA, Broadcom, Marvell: Workday-like behavior.
+- Intel, NVIDIA, Broadcom, Marvell, KLA: Workday structured discovery plus shared detail verification.
 - Apple: Apple careers.
 - Microsoft: Microsoft Israel careers.
 - Google: Google Careers.

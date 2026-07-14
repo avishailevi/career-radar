@@ -13,6 +13,7 @@ companies = [
         "name": "Broadcom",
         "platform": "workday",
         "url": "https://www.broadcom.com/company/careers",
+        "workday_url": "https://broadcom.wd1.myworkdayjobs.com/External_Career",
     },
     {
         "name": "Intel",
@@ -45,6 +46,7 @@ companies = [
         "name": "Marvell",
         "platform": "workday",
         "url": "https://www.marvell.com/company/careers.html",
+        "workday_url": "https://marvell.wd1.myworkdayjobs.com/MarvellCareers",
     },
     {
         "name": "Cadence",
