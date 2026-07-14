@@ -12,6 +12,7 @@ from scanners.workday_scanner import build_workday_jobs
 from scanners.workday_scanner import discover_workday_candidates
 from scanners.workday_scanner import get_candidate_from_posting
 from scanners.workday_scanner import get_israel_applied_facets
+from scanners.workday_scanner import get_workday_requisition_id
 from scanners.workday_scanner import get_workday_search_url
 from scanners.workday_scanner import get_workday_site
 from scanners.workday_scanner import sort_workday_candidates
@@ -87,7 +88,7 @@ class WorkdayScannerTests(unittest.TestCase):
             ),
         )
 
-    def test_candidate_preserves_direct_url_as_identity(self):
+    def test_candidate_uses_direct_url_for_display_and_requisition_for_identity(self):
         site = WorkdaySite(
             base_url="https://example.wd1.myworkdayjobs.com",
             tenant="example",
@@ -95,12 +96,64 @@ class WorkdayScannerTests(unittest.TestCase):
         )
         candidate = get_candidate_from_posting(
             site,
-            posting("ASIC Engineer", "/job/Israel/ASIC-Engineer_JR1"),
+            posting(
+                "ASIC Engineer",
+                "/job/Israel/ASIC-Engineer_JR1234",
+                job_id="JR1234",
+            ),
             0,
         )
 
-        self.assertEqual(candidate.url, candidate.identity_url)
-        self.assertIn("JR1", candidate.source_text)
+        self.assertEqual(
+            candidate.url,
+            (
+                "https://example.wd1.myworkdayjobs.com/External/job/Israel/"
+                "ASIC-Engineer_JR1234"
+            ),
+        )
+        self.assertEqual(candidate.identity_url, "workday://example/jr1234")
+        self.assertIn("JR1234", candidate.source_text)
+
+    def test_candidate_without_usable_requisition_falls_back_to_display_url(self):
+        site = WorkdaySite(
+            base_url="https://example.wd1.myworkdayjobs.com",
+            tenant="example",
+            site="External",
+        )
+        candidate = get_candidate_from_posting(
+            site,
+            posting(
+                "ASIC Engineer",
+                "/job/Israel/ASIC-Engineer",
+                job_id="Spotlight Job",
+            ),
+            0,
+        )
+
+        self.assertEqual(candidate.identity_url, candidate.url)
+        self.assertEqual(candidate.job_id, "")
+
+    def test_requisition_id_ignores_non_id_bullet_fields(self):
+        self.assertEqual(
+            get_workday_requisition_id(
+                {
+                    "bulletFields": ["Spotlight Job", "JR0283670"],
+                    "externalPath": "/job/Israel/ASIC-Engineer_JR9999999",
+                }
+            ),
+            "JR0283670",
+        )
+
+    def test_requisition_id_falls_back_to_external_path(self):
+        self.assertEqual(
+            get_workday_requisition_id(
+                {
+                    "bulletFields": ["Spotlight Job"],
+                    "externalPath": "/job/Israel/ASIC-Engineer_R026223-4",
+                }
+            ),
+            "R026223-4",
+        )
 
     def test_discovery_reads_pages_until_empty_page(self):
         pages = {

@@ -20,6 +20,7 @@ MAX_PAGES = 5
 MAX_WORKDAY_DETAIL_PAGES_PER_COMPANY = 2
 REQUEST_TIMEOUT_SECONDS = 30
 WORKDAY_LOCALE_PATTERN = re.compile(r"^[a-z]{2}-[A-Z]{2}$")
+WORKDAY_REQUISITION_PATTERN = re.compile(r"^[A-Za-z]*\d[A-Za-z0-9-]{3,}$")
 ISRAEL_DESCRIPTOR_HINTS = [
     "israel",
     "isr-",
@@ -220,6 +221,40 @@ def get_first_bullet_field(posting: dict) -> str:
     return ""
 
 
+def is_workday_requisition_id(value: str) -> bool:
+    clean_value = clean_text(value)
+
+    if not clean_value or " " in clean_value:
+        return False
+
+    return WORKDAY_REQUISITION_PATTERN.match(clean_value) is not None
+
+
+def get_workday_requisition_id(posting: dict) -> str:
+    bullet_fields = posting.get("bulletFields", [])
+
+    if isinstance(bullet_fields, list):
+        for field in bullet_fields:
+            value = clean_text(field)
+            if is_workday_requisition_id(value):
+                return value
+
+    external_path = clean_text(posting.get("externalPath"))
+    if "_" in external_path:
+        value = external_path.rsplit("_", 1)[-1]
+        if is_workday_requisition_id(value):
+            return value
+
+    return ""
+
+
+def get_workday_identity_url(site: WorkdaySite, requisition_id: str, url: str) -> str:
+    if requisition_id:
+        return f"workday://{site.tenant}/{requisition_id.lower()}"
+
+    return url
+
+
 def build_workday_job_url(site: WorkdaySite, external_path: str) -> str:
     return urljoin(f"{site.base_url}/{site.site}/", external_path.lstrip("/"))
 
@@ -236,19 +271,21 @@ def get_candidate_from_posting(
         return None
 
     locations_text = clean_text(posting.get("locationsText"))
-    job_id = get_first_bullet_field(posting)
+    job_id = get_workday_requisition_id(posting)
+    display_job_id = job_id or get_first_bullet_field(posting)
     posted_on = clean_text(posting.get("postedOn"))
     url = build_workday_job_url(site, external_path)
+    identity_url = get_workday_identity_url(site, job_id, url)
     source_text = " ".join(
         part
-        for part in [title, locations_text, job_id, posted_on, external_path]
+        for part in [title, locations_text, display_job_id, posted_on, external_path]
         if part
     )
 
     return WorkdayCandidate(
         title=title,
         url=url,
-        identity_url=url,
+        identity_url=identity_url,
         locations_text=locations_text,
         job_id=job_id,
         posted_on=posted_on,

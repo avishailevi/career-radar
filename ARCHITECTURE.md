@@ -85,6 +85,7 @@ Current behavior:
 - Applies Israel location facets when Workday exposes them.
 - Builds canonical Workday detail URLs with the board/site segment.
 - Reuses the shared browser detail verifier from `scanner.py`, capped to a small Workday sample by default.
+- Uses `identity_url` with `workday://<tenant>/<requisition>` when CXS exposes a valid requisition ID.
 - Preserves existing job output fields and verification states.
 
 ### `scanners/generic_scanner.py`

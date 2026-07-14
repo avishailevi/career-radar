@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
@@ -7,6 +8,13 @@ from pathlib import Path
 
 DEFAULT_HISTORY_PATH = Path("data") / "job_history.json"
 VALID_TRIAGE_STATES = {"saved", "dismissed", "applied"}
+WORKDAY_IDENTITY_PATTERN = re.compile(
+    r"^workday://(?P<tenant>[a-z0-9-]+)/(?P<requisition>[a-z0-9-]+)$",
+    re.IGNORECASE,
+)
+WORKDAY_URL_REQUISITION_PATTERN = re.compile(
+    r"_([A-Za-z]*\d[A-Za-z0-9-]{3,})(?:[/?#]|$)",
+)
 
 
 def normalize_identifier_part(value) -> str:
@@ -33,6 +41,52 @@ def generate_job_id_for_job(job: dict) -> str:
         job["company"],
         job["title"],
         get_job_identity_url(job),
+    )
+
+
+def get_workday_requisition_from_identity(value: str) -> str:
+    match = WORKDAY_IDENTITY_PATTERN.match(str(value or "").strip())
+
+    if not match:
+        return ""
+
+    return normalize_identifier_part(match.group("requisition"))
+
+
+def get_workday_requisition_from_url(value: str) -> str:
+    text = str(value or "").strip()
+
+    if "workdayjobs.com" not in text.lower():
+        return ""
+
+    match = WORKDAY_URL_REQUISITION_PATTERN.search(text)
+
+    if not match:
+        return ""
+
+    return normalize_identifier_part(match.group(1))
+
+
+def get_workday_requisition(job: dict) -> str:
+    identity_requisition = get_workday_requisition_from_identity(
+        get_job_identity_url(job),
+    )
+
+    if identity_requisition:
+        return identity_requisition
+
+    return get_workday_requisition_from_url(job.get("url", ""))
+
+
+def get_workday_history_key(job: dict) -> tuple[str, str] | None:
+    requisition = get_workday_requisition(job)
+
+    if not requisition:
+        return None
+
+    return (
+        normalize_identifier_part(job.get("company")),
+        requisition,
     )
 
 
@@ -94,6 +148,24 @@ def update_job_history(
         for record in history["jobs"]
         if record.get("job_id")
     }
+    workday_records_by_key = {}
+    ambiguous_workday_keys = set()
+
+    for record in history["jobs"]:
+        workday_key = get_workday_history_key(record)
+
+        if not workday_key:
+            continue
+
+        if workday_key in workday_records_by_key:
+            ambiguous_workday_keys.add(workday_key)
+            continue
+
+        workday_records_by_key[workday_key] = record
+
+    for workday_key in ambiguous_workday_keys:
+        workday_records_by_key.pop(workday_key, None)
+
     previously_seen_count = 0
     new_jobs = []
     processed_job_ids = set()
@@ -108,8 +180,19 @@ def update_job_history(
 
         processed_job_ids.add(job_id)
 
-        if job_id in records_by_id:
-            existing_record = records_by_id[job_id]
+        existing_record = records_by_id.get(job_id)
+        workday_key = get_workday_history_key(job)
+
+        if not existing_record and workday_key:
+            existing_record = workday_records_by_key.get(workday_key)
+            if existing_record:
+                old_job_id = existing_record.get("job_id")
+                if old_job_id in records_by_id:
+                    del records_by_id[old_job_id]
+                existing_record["job_id"] = job_id
+                records_by_id[job_id] = existing_record
+
+        if existing_record:
             existing_record["last_seen"] = seen_at
             existing_record["url"] = record["url"]
             existing_record["matched_keyword"] = record["matched_keyword"]
