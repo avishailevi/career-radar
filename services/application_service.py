@@ -1,7 +1,12 @@
 import io
 import os
+import sys
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from contextlib import redirect_stdout
+from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
@@ -26,16 +31,78 @@ DEBUG = os.environ.get("CAREER_RADAR_DEBUG", "").strip().lower() in {
     "yes",
     "on",
 }
+SCAN_WORKERS_ENV = "CAREER_RADAR_SCAN_WORKERS"
+DEFAULT_SCAN_WORKERS = 4
+MAX_SCAN_WORKERS = 8
 
 _scan_lock = threading.Lock()
+_scan_status_lock = threading.Lock()
+_scan_started_monotonic = 0.0
 _scan_status = {
     "state": "idle",
     "message": "Ready to scan.",
     "started_at": "",
     "completed_at": "",
     "error": "",
+    "total_companies": 0,
+    "completed_companies": 0,
+    "running_companies": [],
+    "elapsed_seconds": 0.0,
 }
 _session_has_scan = False
+
+
+@dataclass
+class CompanyScanResult:
+    index: int
+    company_name: str
+    jobs: list[dict]
+    health: dict
+    output: str = ""
+
+
+class ThreadLocalStdout:
+    def __init__(self, fallback):
+        self.fallback = fallback
+        self.local = threading.local()
+
+    def set_buffer(self, buffer) -> None:
+        self.local.buffer = buffer
+
+    def clear_buffer(self) -> None:
+        if hasattr(self.local, "buffer"):
+            del self.local.buffer
+
+    def write(self, text: str) -> int:
+        buffer = getattr(self.local, "buffer", None)
+        if buffer is not None:
+            return buffer.write(text)
+
+        return self.fallback.write(text)
+
+    def flush(self) -> None:
+        buffer = getattr(self.local, "buffer", None)
+        if buffer is not None:
+            return None
+
+        return self.fallback.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.fallback, name)
+
+
+def get_scan_worker_count(environ: dict | None = None) -> int:
+    value = (environ or os.environ).get(SCAN_WORKERS_ENV, "")
+
+    try:
+        worker_count = int(str(value).strip())
+    except ValueError:
+        return DEFAULT_SCAN_WORKERS
+
+    if worker_count <= 0:
+        return DEFAULT_SCAN_WORKERS
+
+    return min(worker_count, MAX_SCAN_WORKERS)
 
 
 def get_requested_company_names(args: list[str] | None = None) -> list[str]:
@@ -69,6 +136,9 @@ def get_companies_to_scan(args: list[str] | None = None) -> list[dict]:
 
 
 def scan_company(company: dict) -> list[dict]:
+    if isinstance(sys.stdout, ThreadLocalStdout):
+        return ScannerFactory.scan(company, debug=DEBUG)
+
     if DEBUG:
         return ScannerFactory.scan(company, debug=True)
 
@@ -76,33 +146,163 @@ def scan_company(company: dict) -> list[dict]:
         return ScannerFactory.scan(company, debug=False)
 
 
-def scan_companies(companies_to_scan: list[dict]) -> tuple[list[dict], list[dict]]:
-    all_jobs = []
-    scan_health = []
+def build_scan_health(
+    company_name: str,
+    jobs: list[dict],
+    duration_seconds: float,
+    error: str = "",
+) -> dict:
+    status = "failed"
 
-    for company in companies_to_scan:
-        company_name = company["name"]
-
-        try:
-            jobs = scan_company(company)
-        except Exception:
-            scan_health.append(
-                {
-                    "company": company_name,
-                    "status": "failed",
-                }
-            )
-            continue
-
-        all_jobs.extend(jobs)
+    if not error:
         status = "success_with_jobs" if jobs else "success_zero_jobs"
-        scan_health.append(
-            {
-                "company": company_name,
-                "status": status,
-            }
-        )
 
+    health = {
+        "company": company_name,
+        "status": status,
+        "duration_seconds": duration_seconds,
+        "jobs_found": len(jobs),
+    }
+    if error:
+        health["error"] = error
+
+    return health
+
+
+def get_error_message(error: Exception) -> str:
+    for line in str(error).splitlines():
+        clean_line = line.strip()
+        if clean_line:
+            return clean_line
+
+    return error.__class__.__name__
+
+
+def scan_company_result(
+    index: int,
+    company: dict,
+    stdout_proxy: ThreadLocalStdout | None = None,
+) -> CompanyScanResult:
+    company_name = company["name"]
+    output = io.StringIO()
+    start = time.monotonic()
+    _mark_company_started(index)
+
+    if stdout_proxy:
+        stdout_proxy.set_buffer(output)
+
+    try:
+        if stdout_proxy:
+            jobs = scan_company(company)
+        else:
+            with redirect_stdout(output):
+                jobs = scan_company(company)
+        return CompanyScanResult(
+            index=index,
+            company_name=company_name,
+            jobs=jobs,
+            health=build_scan_health(
+                company_name,
+                jobs,
+                time.monotonic() - start,
+            ),
+            output=output.getvalue(),
+        )
+    except Exception as error:
+        return CompanyScanResult(
+            index=index,
+            company_name=company_name,
+            jobs=[],
+            health=build_scan_health(
+                company_name,
+                [],
+                time.monotonic() - start,
+                get_error_message(error),
+            ),
+            output=output.getvalue(),
+        )
+    finally:
+        if stdout_proxy:
+            stdout_proxy.clear_buffer()
+        _mark_company_completed(index)
+
+
+def build_failed_company_result(
+    index: int,
+    company: dict,
+    error: Exception,
+) -> CompanyScanResult:
+    company_name = company["name"]
+    return CompanyScanResult(
+        index=index,
+        company_name=company_name,
+        jobs=[],
+        health=build_scan_health(company_name, [], 0.0, get_error_message(error)),
+    )
+
+
+def scan_companies(
+    companies_to_scan: list[dict],
+    worker_count: int | None = None,
+) -> tuple[list[dict], list[dict]]:
+    worker_count = worker_count or get_scan_worker_count()
+    worker_count = max(1, min(worker_count, len(companies_to_scan) or 1))
+    results_by_index = {}
+
+    if not companies_to_scan:
+        return [], []
+
+    _initialize_scan_progress(companies_to_scan)
+
+    if worker_count == 1:
+        for index, company in enumerate(companies_to_scan):
+            result = scan_company_result(index, company)
+            results_by_index[index] = result
+    else:
+        original_stdout = sys.stdout
+        stdout_proxy = ThreadLocalStdout(original_stdout)
+        sys.stdout = stdout_proxy
+        try:
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                futures_by_index = {}
+                for index, company in enumerate(companies_to_scan):
+                    future = executor.submit(
+                        scan_company_result,
+                        index,
+                        company,
+                        stdout_proxy,
+                    )
+                    futures_by_index[future] = index
+
+                for future in as_completed(futures_by_index):
+                    index = futures_by_index[future]
+                    company = companies_to_scan[index]
+                    try:
+                        result = future.result()
+                    except Exception as error:
+                        result = build_failed_company_result(index, company, error)
+                        _mark_company_completed(index)
+
+                    results_by_index[index] = result
+        finally:
+            sys.stdout = original_stdout
+
+    ordered_results = [
+        results_by_index[index]
+        for index in range(len(companies_to_scan))
+    ]
+
+    if DEBUG:
+        for result in ordered_results:
+            if result.output:
+                print(result.output, end="")
+
+    all_jobs = [
+        job
+        for result in ordered_results
+        for job in result.jobs
+    ]
+    scan_health = [result.health for result in ordered_results]
     return all_jobs, scan_health
 
 
@@ -186,20 +386,85 @@ def _utc_now() -> str:
 
 
 def _set_scan_status(state: str, message: str, error: str = "") -> None:
-    _scan_status["state"] = state
-    _scan_status["message"] = message
-    _scan_status["error"] = error
+    global _scan_started_monotonic
 
-    if state == "running":
-        _scan_status["started_at"] = _utc_now()
-        _scan_status["completed_at"] = ""
+    with _scan_status_lock:
+        _scan_status["state"] = state
+        _scan_status["message"] = message
+        _scan_status["error"] = error
 
-    if state in {"completed", "failed"}:
-        _scan_status["completed_at"] = _utc_now()
+        if state == "running":
+            _scan_started_monotonic = time.monotonic()
+            _scan_status["started_at"] = _utc_now()
+            _scan_status["completed_at"] = ""
+            _scan_status["completed_companies"] = 0
+            _scan_status["running_companies"] = []
+            _scan_status["elapsed_seconds"] = 0.0
+
+        if state in {"completed", "failed"}:
+            _scan_status["completed_at"] = _utc_now()
+            _scan_status["running_companies"] = []
+            _scan_status["elapsed_seconds"] = get_elapsed_scan_seconds()
+
+
+def get_elapsed_scan_seconds() -> float:
+    if not _scan_started_monotonic:
+        return 0.0
+
+    return time.monotonic() - _scan_started_monotonic
+
+
+def _initialize_scan_progress(companies_to_scan: list[dict]) -> None:
+    with _scan_status_lock:
+        _scan_status["total_companies"] = len(companies_to_scan)
+        _scan_status["completed_companies"] = 0
+        _scan_status["running_companies"] = []
+        _scan_status["elapsed_seconds"] = get_elapsed_scan_seconds()
+        _scan_status["_company_order"] = {
+            index: company["name"]
+            for index, company in enumerate(companies_to_scan)
+        }
+        _scan_status["_running_indices"] = set()
+
+
+def _update_running_companies_locked() -> None:
+    company_order = _scan_status.get("_company_order", {})
+    running_indices = sorted(_scan_status.get("_running_indices", set()))
+    _scan_status["running_companies"] = [
+        company_order[index]
+        for index in running_indices
+        if index in company_order
+    ]
+    _scan_status["elapsed_seconds"] = get_elapsed_scan_seconds()
+
+
+def _mark_company_started(index: int) -> None:
+    with _scan_status_lock:
+        _scan_status.setdefault("_running_indices", set()).add(index)
+        _update_running_companies_locked()
+
+
+def _mark_company_completed(index: int) -> None:
+    with _scan_status_lock:
+        _scan_status.setdefault("_running_indices", set()).discard(index)
+        _scan_status["completed_companies"] = _scan_status.get(
+            "completed_companies",
+            0,
+        ) + 1
+        _update_running_companies_locked()
 
 
 def get_scan_status() -> dict:
-    return dict(_scan_status)
+    with _scan_status_lock:
+        status = {
+            key: value
+            for key, value in _scan_status.items()
+            if not key.startswith("_")
+        }
+        status["running_companies"] = list(status.get("running_companies", []))
+        if status.get("state") == "running":
+            status["elapsed_seconds"] = get_elapsed_scan_seconds()
+        return status
 
 
 def session_has_scan() -> bool:
@@ -207,17 +472,25 @@ def session_has_scan() -> bool:
 
 
 def reset_session_scan_state() -> None:
+    global _scan_started_monotonic
     global _session_has_scan
     _session_has_scan = False
-    _scan_status.update(
-        {
-            "state": "idle",
-            "message": "Ready to scan.",
-            "started_at": "",
-            "completed_at": "",
-            "error": "",
-        }
-    )
+    _scan_started_monotonic = 0.0
+    with _scan_status_lock:
+        _scan_status.clear()
+        _scan_status.update(
+            {
+                "state": "idle",
+                "message": "Ready to scan.",
+                "started_at": "",
+                "completed_at": "",
+                "error": "",
+                "total_companies": 0,
+                "completed_companies": 0,
+                "running_companies": [],
+                "elapsed_seconds": 0.0,
+            }
+        )
 
 
 def run_scan(

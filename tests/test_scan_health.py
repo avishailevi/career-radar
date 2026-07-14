@@ -36,13 +36,15 @@ class ScanHealthTest(unittest.TestCase):
 
         self.assertEqual(jobs, apple_jobs)
         self.assertEqual(
-            scan_health,
+            [(result["company"], result["status"], result["jobs_found"]) for result in scan_health],
             [
-                {"company": "Apple", "status": "success_with_jobs"},
-                {"company": "Broadcom", "status": "success_zero_jobs"},
-                {"company": "Marvell", "status": "failed"},
+                ("Apple", "success_with_jobs", 1),
+                ("Broadcom", "success_zero_jobs", 0),
+                ("Marvell", "failed", 0),
             ],
         )
+        self.assertIn("duration_seconds", scan_health[0])
+        self.assertEqual(scan_health[2]["error"], "scan failed")
 
     def test_daily_summary_prints_scan_health(self):
         scan_health = [

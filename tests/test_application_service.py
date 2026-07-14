@@ -1,6 +1,9 @@
 import tempfile
+import threading
 import unittest
 import json
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -248,13 +251,334 @@ class ApplicationServiceTest(unittest.TestCase):
             jobs, scan_health = application_service.scan_companies(companies)
 
         self.assertEqual(len(jobs), 1)
+        self.assert_health(scan_health[0], "Apple", "success_with_jobs", 1)
+        self.assert_health(scan_health[1], "BrokenCo", "failed", 0)
+        self.assertEqual(scan_health[1]["error"], "scanner failed")
+
+    def test_default_worker_count_is_four(self):
+        self.assertEqual(application_service.get_scan_worker_count({}), 4)
+
+    def test_environment_worker_count_overrides_default(self):
         self.assertEqual(
-            scan_health,
-            [
-                {"company": "Apple", "status": "success_with_jobs"},
-                {"company": "BrokenCo", "status": "failed"},
-            ],
+            application_service.get_scan_worker_count(
+                {"CAREER_RADAR_SCAN_WORKERS": "2"},
+            ),
+            2,
         )
+
+    def test_invalid_worker_count_uses_default(self):
+        self.assertEqual(
+            application_service.get_scan_worker_count(
+                {"CAREER_RADAR_SCAN_WORKERS": "many"},
+            ),
+            4,
+        )
+
+    def test_zero_or_negative_worker_count_uses_default(self):
+        self.assertEqual(
+            application_service.get_scan_worker_count(
+                {"CAREER_RADAR_SCAN_WORKERS": "0"},
+            ),
+            4,
+        )
+        self.assertEqual(
+            application_service.get_scan_worker_count(
+                {"CAREER_RADAR_SCAN_WORKERS": "-3"},
+            ),
+            4,
+        )
+
+    def test_worker_count_is_capped(self):
+        self.assertEqual(
+            application_service.get_scan_worker_count(
+                {"CAREER_RADAR_SCAN_WORKERS": "99"},
+            ),
+            8,
+        )
+
+    def test_worker_count_one_preserves_sequential_behavior(self):
+        companies = [{"name": "Apple"}, {"name": "Broadcom"}]
+        calls = []
+
+        def scan_company(company):
+            calls.append(company["name"])
+            return [self.build_job(company["name"], "ASIC", f"https://{company['name']}.test")]
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            jobs, scan_health = application_service.scan_companies(
+                companies,
+                worker_count=1,
+            )
+
+        self.assertEqual(calls, ["Apple", "Broadcom"])
+        self.assertEqual([job["company"] for job in jobs], ["Apple", "Broadcom"])
+        self.assertEqual([result["company"] for result in scan_health], ["Apple", "Broadcom"])
+
+    def test_multiple_companies_execute_concurrently(self):
+        companies = [{"name": "Apple"}, {"name": "Broadcom"}]
+        both_started = threading.Event()
+        release = threading.Event()
+        active = set()
+        active_lock = threading.Lock()
+
+        def scan_company(company):
+            with active_lock:
+                active.add(company["name"])
+                if len(active) == 2:
+                    both_started.set()
+            self.assertTrue(both_started.wait(timeout=2))
+            release.wait(timeout=2)
+            return [self.build_job(company["name"], "ASIC", f"https://{company['name']}.test")]
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            thread = threading.Thread(
+                target=lambda: application_service.scan_companies(
+                    companies,
+                    worker_count=2,
+                )
+            )
+            thread.start()
+            self.assertTrue(both_started.wait(timeout=2))
+            release.set()
+            thread.join(timeout=2)
+
+        self.assertFalse(thread.is_alive())
+
+    def test_final_jobs_and_health_keep_requested_order_when_workers_finish_out_of_order(self):
+        companies = [{"name": "Slow"}, {"name": "Fast"}]
+        slow_release = threading.Event()
+        fast_done = threading.Event()
+
+        def scan_company(company):
+            if company["name"] == "Fast":
+                fast_done.set()
+                return [self.build_job("Fast", "ASIC", "https://fast.test")]
+
+            self.assertTrue(fast_done.wait(timeout=2))
+            slow_release.wait(timeout=2)
+            return [self.build_job("Slow", "ASIC", "https://slow.test")]
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            thread_result = {}
+            thread = threading.Thread(
+                target=lambda: thread_result.update(
+                    result=application_service.scan_companies(
+                        companies,
+                        worker_count=2,
+                    )
+                )
+            )
+            thread.start()
+            self.assertTrue(fast_done.wait(timeout=2))
+            slow_release.set()
+            thread.join(timeout=2)
+
+        jobs, scan_health = thread_result["result"]
+        self.assertEqual([job["company"] for job in jobs], ["Slow", "Fast"])
+        self.assertEqual([result["company"] for result in scan_health], ["Slow", "Fast"])
+
+    def test_future_exception_becomes_failed_company_result(self):
+        companies = [{"name": "Apple"}, {"name": "Broadcom"}]
+
+        with patch(
+            "services.application_service.scan_company_result",
+            side_effect=RuntimeError("future exploded"),
+        ):
+            jobs, scan_health = application_service.scan_companies(
+                companies,
+                worker_count=2,
+            )
+
+        self.assertEqual(jobs, [])
+        self.assert_health(scan_health[0], "Apple", "failed", 0)
+        self.assertEqual(scan_health[0]["error"], "future exploded")
+
+    def test_duration_and_jobs_found_are_recorded(self):
+        companies = [{"name": "Apple"}]
+        jobs_for_company = [self.build_job("Apple", "ASIC", "https://apple.test")]
+
+        with patch(
+            "services.application_service.scan_company",
+            return_value=jobs_for_company,
+        ):
+            jobs, scan_health = application_service.scan_companies(
+                companies,
+                worker_count=1,
+            )
+
+        self.assertEqual(jobs, jobs_for_company)
+        self.assertEqual(scan_health[0]["jobs_found"], 1)
+        self.assertIsInstance(scan_health[0]["duration_seconds"], float)
+        self.assertGreaterEqual(scan_health[0]["duration_seconds"], 0.0)
+
+    def test_progress_tracks_running_and_completed_companies(self):
+        companies = [{"name": "Apple"}, {"name": "Broadcom"}]
+        both_started = threading.Event()
+        release = threading.Event()
+        active = set()
+        active_lock = threading.Lock()
+
+        def scan_company(company):
+            with active_lock:
+                active.add(company["name"])
+                if len(active) == 2:
+                    both_started.set()
+            release.wait(timeout=2)
+            return []
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            thread = threading.Thread(
+                target=lambda: application_service.scan_companies(
+                    companies,
+                    worker_count=2,
+                )
+            )
+            thread.start()
+            self.assertTrue(both_started.wait(timeout=2))
+            status = application_service.get_scan_status()
+            release.set()
+            thread.join(timeout=2)
+
+        self.assertEqual(status["total_companies"], 2)
+        self.assertEqual(status["completed_companies"], 0)
+        self.assertEqual(status["running_companies"], ["Apple", "Broadcom"])
+        self.assertGreaterEqual(status["elapsed_seconds"], 0.0)
+        final_status = application_service.get_scan_status()
+        self.assertEqual(final_status["completed_companies"], 2)
+        self.assertEqual(final_status["running_companies"], [])
+
+    def test_repeated_parallel_runs_are_deterministic(self):
+        companies = [{"name": "Apple"}, {"name": "Broadcom"}, {"name": "Marvell"}]
+
+        def scan_company(company):
+            return [self.build_job(company["name"], "ASIC", f"https://{company['name']}.test")]
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            first = application_service.scan_companies(companies, worker_count=3)
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            second = application_service.scan_companies(companies, worker_count=3)
+
+        self.assertEqual(
+            [job["company"] for job in first[0]],
+            [job["company"] for job in second[0]],
+        )
+        self.assertEqual(
+            [result["company"] for result in first[1]],
+            [result["company"] for result in second[1]],
+        )
+
+    def test_debug_output_is_printed_in_requested_company_order(self):
+        companies = [{"name": "Slow"}, {"name": "Fast"}]
+        fast_done = threading.Event()
+        release_slow = threading.Event()
+
+        def scan_company(company):
+            if company["name"] == "Fast":
+                print("Fast output")
+                fast_done.set()
+                return []
+
+            self.assertTrue(fast_done.wait(timeout=2))
+            release_slow.wait(timeout=2)
+            print("Slow output")
+            return []
+
+        output = io.StringIO()
+        with patch("services.application_service.DEBUG", True):
+            with patch("services.application_service.scan_company", side_effect=scan_company):
+                thread = threading.Thread(
+                    target=lambda: application_service.scan_companies(
+                        companies,
+                        worker_count=2,
+                    )
+                )
+                with redirect_stdout(output):
+                    thread.start()
+                    self.assertTrue(fast_done.wait(timeout=2))
+                    release_slow.set()
+                    thread.join(timeout=2)
+
+        self.assertLess(
+            output.getvalue().index("Slow output"),
+            output.getvalue().index("Fast output"),
+        )
+
+    def test_existing_scan_health_without_duration_or_jobs_fields_loads(self):
+        health = [{"company": "Apple", "status": "success_with_jobs"}]
+        self.write_history(
+            {
+                "jobs": [],
+                "latest_scan": {
+                    "summary": application_service.build_scan_summary(1, 0, 0, health),
+                    "scan_health": health,
+                },
+            }
+        )
+
+        self.assertEqual(application_service.get_latest_scan_health(self.history_path), health)
+
+    def test_history_is_written_once_after_all_scans_complete(self):
+        jobs = [self.build_job("Apple", "ASIC", "https://apple.test")]
+        scans_done = threading.Event()
+
+        def scan_companies(companies):
+            scans_done.set()
+            return jobs, [{"company": "Apple", "status": "success_with_jobs"}]
+
+        with patch("services.application_service.get_companies_to_scan", return_value=[{"name": "Apple"}]):
+            with patch("services.application_service.scan_companies", side_effect=scan_companies):
+                with patch("services.application_service.update_job_history") as update_history:
+                    update_history.return_value = {
+                        "new_jobs": [],
+                        "previously_seen_count": 0,
+                        "total_seen_count": 1,
+                    }
+                    with patch("services.application_service.send_email_digest"):
+                        application_service.run_scan(history_path=self.history_path)
+
+        self.assertTrue(scans_done.is_set())
+        update_history.assert_called_once_with(jobs, self.history_path)
+
+    def test_email_is_sent_once_after_complete_result_is_assembled(self):
+        calls = []
+
+        def scan_companies(companies):
+            calls.append("scan")
+            return [self.build_job("Apple", "ASIC", "https://apple.test")], [
+                {"company": "Apple", "status": "success_with_jobs"}
+            ]
+
+        def update_history(jobs, history_path):
+            calls.append("history")
+            new_jobs = [dict(job, job_id=f"{index}") for index, job in enumerate(jobs)]
+            return {
+                "new_jobs": new_jobs,
+                "previously_seen_count": 0,
+                "total_seen_count": len(jobs),
+            }
+
+        def send_email(jobs):
+            calls.append("email")
+
+        with patch("services.application_service.get_companies_to_scan", return_value=[{"name": "Apple"}]):
+            with patch("services.application_service.scan_companies", side_effect=scan_companies):
+                with patch("services.application_service.update_job_history", side_effect=update_history):
+                    with patch("services.application_service.send_email_digest", side_effect=send_email):
+                        application_service.run_scan(history_path=self.history_path)
+
+        self.assertEqual(calls, ["scan", "history", "email"])
+
+    def test_no_email_is_sent_when_scan_fails_before_history_update(self):
+        with patch("services.application_service.get_companies_to_scan", return_value=[{"name": "Apple"}]):
+            with patch(
+                "services.application_service.scan_companies",
+                side_effect=RuntimeError("scan orchestration failed"),
+            ):
+                with patch("services.application_service.send_email_digest") as send_email:
+                    with self.assertRaises(RuntimeError):
+                        application_service.run_scan(history_path=self.history_path)
+
+        send_email.assert_not_called()
 
     def test_concurrent_scan_is_prevented(self):
         application_service._scan_lock.acquire()
@@ -410,6 +734,12 @@ class ApplicationServiceTest(unittest.TestCase):
             "match_confidence": confidence,
             "relevance_score": score,
         }
+
+    def assert_health(self, health, company, status, jobs_found):
+        self.assertEqual(health["company"], company)
+        self.assertEqual(health["status"], status)
+        self.assertEqual(health["jobs_found"], jobs_found)
+        self.assertIsInstance(health["duration_seconds"], float)
 
     def build_history_job(
         self,

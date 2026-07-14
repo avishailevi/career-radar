@@ -268,6 +268,20 @@ class LocalAppTest(unittest.TestCase):
         self.assertIn(b"Could not complete the scan.", response.data)
         self.assertNotIn(b"Traceback", response.data)
 
+    def test_running_scan_progress_renders_current_companies(self):
+        status = self.status("running")
+        status["total_companies"] = 3
+        status["completed_companies"] = 1
+        status["running_companies"] = ["Apple", "Broadcom"]
+        status["elapsed_seconds"] = 2.5
+
+        with patch("local_app.get_scan_status", return_value=status):
+            response = self.client.get("/scan-health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"1/3 completed", response.data)
+        self.assertIn(b"Scanning Apple, Broadcom", response.data)
+
     def job(self, company, title, url):
         return {
             "company": company,
@@ -322,6 +336,10 @@ class LocalAppTest(unittest.TestCase):
             "started_at": "",
             "completed_at": "",
             "error": "",
+            "total_companies": 0,
+            "completed_companies": 0,
+            "running_companies": [],
+            "elapsed_seconds": 0.0,
         }
 
     class FakeThread:
