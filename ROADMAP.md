@@ -28,7 +28,7 @@ Already present:
 - Company list with platform metadata.
 - Generic scanner logic in `scanner.py`.
 - Scanner factory entry point.
-- Workday wrapper that currently delegates to the shared scanner implementation.
+- Workday scanner using Workday CXS candidate discovery plus shared detail verification.
 - Generic scanner wrapper that delegates to the shared scanner implementation.
 - Filtering service extracted from `scanner.py`.
 - Separate URL checks for job detail pages and Workday job listing pages.
@@ -48,9 +48,10 @@ Completed milestone:
 - ScannerFactory routes Workday companies through `WorkdayScanner`.
 - Workday-like companies keep landing-page navigation stable.
 - Workday listing URLs are followed without being counted as job detail pages.
+- Workday companies use Israel-aware structured candidate discovery before detail verification.
 
 Highest-priority next work:
-- Review remaining red/yellow company statuses.
+- Review remaining yellow statuses from current audit data.
 
 ## Later
 

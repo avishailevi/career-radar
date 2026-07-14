@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from services.job_history_service import generate_job_id
+from services.job_history_service import generate_job_id_for_job
 from services.job_history_service import get_jobs_by_triage_state
 from services.job_history_service import set_job_triage_state
 from services.job_history_service import update_job_history
@@ -287,6 +288,225 @@ class JobHistoryServiceTest(unittest.TestCase):
         self.assertEqual(result["new_jobs"], [])
         self.assertEqual(result["previously_seen_count"], 1)
         self.assertEqual(history["jobs"][0]["job_id"], old_job_id)
+        self.assertEqual(history["jobs"][0]["url"], new_url)
+
+    def test_workday_requisition_prevents_false_new_job_when_url_changes(self):
+        legacy_url = (
+            "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/"
+            "job/Israel-Tel-Aviv/ASIC-Engineer_JR2020995?source=legacy"
+        )
+        new_url = (
+            "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/"
+            "job/Israel-Tel-Aviv/ASIC-Engineer_JR2020995"
+        )
+        legacy_job_id = generate_job_id("NVIDIA", "ASIC Engineer", legacy_url)
+        self.write_history(
+            [
+                {
+                    "job_id": legacy_job_id,
+                    "company": "NVIDIA",
+                    "title": "ASIC Engineer",
+                    "url": legacy_url,
+                    "matched_keyword": "ASIC",
+                    "matched_location": "Israel",
+                    "triage_state": "",
+                    "first_seen": "2026-07-10T06:00:00+00:00",
+                    "last_seen": "2026-07-10T06:00:00+00:00",
+                }
+            ]
+        )
+        job = {
+            "company": "NVIDIA",
+            "title": "ASIC Engineer",
+            "url": new_url,
+            "identity_url": "workday://nvidia/jr2020995",
+            "matched_keyword": "ASIC",
+            "matched_location": "Israel",
+        }
+        expected_job_id = generate_job_id_for_job(job)
+
+        with patch(
+            "services.job_history_service.get_seen_at",
+            return_value="2026-07-11T06:00:00+00:00",
+        ):
+            result = update_job_history([job], self.history_path)
+
+        history = self.read_history()
+
+        self.assertEqual(result["new_jobs"], [])
+        self.assertEqual(result["previously_seen_count"], 1)
+        self.assertEqual(len(history["jobs"]), 1)
+        self.assertEqual(history["jobs"][0]["job_id"], expected_job_id)
+        self.assertEqual(history["jobs"][0]["url"], new_url)
+        self.assertEqual(history["jobs"][0]["first_seen"], "2026-07-10T06:00:00+00:00")
+
+    def test_workday_requisition_refresh_preserves_triage_state(self):
+        legacy_url = (
+            "https://marvell.wd1.myworkdayjobs.com/en-US/MarvellCareers/"
+            "job/Petah-Tikva/Design-Verification_2600069"
+        )
+        new_url = (
+            "https://marvell.wd1.myworkdayjobs.com/MarvellCareers/"
+            "job/Petah-Tikva/Design-Verification_2600069"
+        )
+        old_job_id = generate_job_id(
+            "Marvell",
+            "Design Verification Engineer",
+            legacy_url,
+        )
+        self.write_history(
+            [
+                {
+                    "job_id": old_job_id,
+                    "company": "Marvell",
+                    "title": "Design Verification Engineer",
+                    "url": legacy_url,
+                    "matched_keyword": "Design Verification",
+                    "matched_location": "Petah-Tikva",
+                    "triage_state": "saved",
+                    "first_seen": "2026-07-10T06:00:00+00:00",
+                    "last_seen": "2026-07-10T06:00:00+00:00",
+                }
+            ]
+        )
+
+        result = update_job_history(
+            [
+                {
+                    "company": "Marvell",
+                    "title": "Design Verification Engineer",
+                    "url": new_url,
+                    "identity_url": "workday://marvell/2600069",
+                    "matched_keyword": "Design Verification",
+                    "matched_location": "Petah-Tikva",
+                }
+            ],
+            self.history_path,
+        )
+
+        history = self.read_history()
+
+        self.assertEqual(result["new_jobs"], [])
+        self.assertEqual(history["jobs"][0]["triage_state"], "saved")
+        self.assertEqual(history["jobs"][0]["url"], new_url)
+
+    def test_workday_same_title_location_different_requisitions_are_distinct(self):
+        jobs = [
+            {
+                "company": "Intel",
+                "title": "RF Hardware Design Engineer",
+                "url": "https://intel.wd1.myworkdayjobs.com/External/job/A_JR1111",
+                "identity_url": "workday://intel/jr1111",
+                "matched_keyword": "RF",
+                "matched_location": "Israel",
+            },
+            {
+                "company": "Intel",
+                "title": "RF Hardware Design Engineer",
+                "url": "https://intel.wd1.myworkdayjobs.com/External/job/B_JR2222",
+                "identity_url": "workday://intel/jr2222",
+                "matched_keyword": "RF",
+                "matched_location": "Israel",
+            },
+        ]
+
+        result = update_job_history(jobs, self.history_path)
+        history = self.read_history()
+
+        self.assertEqual(len(result["new_jobs"]), 2)
+        self.assertEqual(len(history["jobs"]), 2)
+        self.assertNotEqual(history["jobs"][0]["job_id"], history["jobs"][1]["job_id"])
+
+    def test_workday_same_requisition_on_two_companies_is_distinct(self):
+        nvidia = {
+            "company": "NVIDIA",
+            "title": "ASIC Engineer",
+            "url": "https://nvidia.wd5.myworkdayjobs.com/Site/job/A_JR1111",
+            "identity_url": "workday://nvidia/jr1111",
+            "matched_keyword": "ASIC",
+            "matched_location": "Israel",
+        }
+        intel = {
+            "company": "Intel",
+            "title": "ASIC Engineer",
+            "url": "https://intel.wd1.myworkdayjobs.com/Site/job/A_JR1111",
+            "identity_url": "workday://intel/jr1111",
+            "matched_keyword": "ASIC",
+            "matched_location": "Israel",
+        }
+
+        self.assertNotEqual(
+            generate_job_id_for_job(nvidia),
+            generate_job_id_for_job(intel),
+        )
+
+    def test_existing_workday_history_without_identity_url_loads_unchanged(self):
+        job_id = generate_job_id(
+            "NVIDIA",
+            "ASIC Engineer",
+            "https://nvidia.wd5.myworkdayjobs.com/Site/job/A_JR1111",
+        )
+        self.write_history(
+            [
+                {
+                    "job_id": job_id,
+                    "company": "NVIDIA",
+                    "title": "ASIC Engineer",
+                    "url": "https://nvidia.wd5.myworkdayjobs.com/Site/job/A_JR1111",
+                    "matched_keyword": "ASIC",
+                    "matched_location": "Israel",
+                    "triage_state": "applied",
+                    "first_seen": "2026-07-10T06:00:00+00:00",
+                    "last_seen": "2026-07-10T06:00:00+00:00",
+                }
+            ]
+        )
+
+        self.assertEqual(self.read_history()["jobs"][0]["job_id"], job_id)
+        self.assertEqual(
+            get_jobs_by_triage_state("applied", self.history_path)[0]["company"],
+            "NVIDIA",
+        )
+
+    def test_elbit_identity_url_behavior_remains_unchanged(self):
+        old_url = "https://elbitsystemscareer.com/?page=search&jobId=20199"
+        new_url = "https://elbitsystemscareer.com/job?jid=20199"
+        old_job_id = generate_job_id("Elbit", "FPGA engineer", old_url)
+        self.write_history(
+            [
+                {
+                    "job_id": old_job_id,
+                    "company": "Elbit",
+                    "title": "FPGA engineer",
+                    "url": old_url,
+                    "matched_keyword": "FPGA",
+                    "matched_location": "Holon",
+                    "triage_state": "dismissed",
+                    "first_seen": "2026-07-11T06:00:00+00:00",
+                    "last_seen": "2026-07-11T06:00:00+00:00",
+                }
+            ]
+        )
+
+        result = update_job_history(
+            [
+                {
+                    "company": "Elbit",
+                    "title": "FPGA engineer",
+                    "url": new_url,
+                    "identity_url": old_url,
+                    "matched_keyword": "FPGA",
+                    "matched_location": "Holon",
+                }
+            ],
+            self.history_path,
+        )
+
+        history = self.read_history()
+
+        self.assertEqual(result["new_jobs"], [])
+        self.assertEqual(history["jobs"][0]["job_id"], old_job_id)
+        self.assertEqual(history["jobs"][0]["triage_state"], "dismissed")
         self.assertEqual(history["jobs"][0]["url"], new_url)
 
     def test_get_jobs_by_triage_state_filters_saved_applied_and_dismissed(self):
