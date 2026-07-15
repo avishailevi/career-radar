@@ -46,6 +46,7 @@ _scan_status = {
     "error": "",
     "total_companies": 0,
     "completed_companies": 0,
+    "completed_company_names": [],
     "running_companies": [],
     "elapsed_seconds": 0.0,
 }
@@ -398,6 +399,7 @@ def _set_scan_status(state: str, message: str, error: str = "") -> None:
             _scan_status["started_at"] = _utc_now()
             _scan_status["completed_at"] = ""
             _scan_status["completed_companies"] = 0
+            _scan_status["completed_company_names"] = []
             _scan_status["running_companies"] = []
             _scan_status["elapsed_seconds"] = 0.0
 
@@ -418,6 +420,7 @@ def _initialize_scan_progress(companies_to_scan: list[dict]) -> None:
     with _scan_status_lock:
         _scan_status["total_companies"] = len(companies_to_scan)
         _scan_status["completed_companies"] = 0
+        _scan_status["completed_company_names"] = []
         _scan_status["running_companies"] = []
         _scan_status["elapsed_seconds"] = get_elapsed_scan_seconds()
         _scan_status["_company_order"] = {
@@ -425,14 +428,21 @@ def _initialize_scan_progress(companies_to_scan: list[dict]) -> None:
             for index, company in enumerate(companies_to_scan)
         }
         _scan_status["_running_indices"] = set()
+        _scan_status["_completed_indices"] = set()
 
 
 def _update_running_companies_locked() -> None:
     company_order = _scan_status.get("_company_order", {})
     running_indices = sorted(_scan_status.get("_running_indices", set()))
+    completed_indices = sorted(_scan_status.get("_completed_indices", set()))
     _scan_status["running_companies"] = [
         company_order[index]
         for index in running_indices
+        if index in company_order
+    ]
+    _scan_status["completed_company_names"] = [
+        company_order[index]
+        for index in completed_indices
         if index in company_order
     ]
     _scan_status["elapsed_seconds"] = get_elapsed_scan_seconds()
@@ -447,10 +457,9 @@ def _mark_company_started(index: int) -> None:
 def _mark_company_completed(index: int) -> None:
     with _scan_status_lock:
         _scan_status.setdefault("_running_indices", set()).discard(index)
-        _scan_status["completed_companies"] = _scan_status.get(
-            "completed_companies",
-            0,
-        ) + 1
+        completed_indices = _scan_status.setdefault("_completed_indices", set())
+        completed_indices.add(index)
+        _scan_status["completed_companies"] = len(completed_indices)
         _update_running_companies_locked()
 
 
@@ -462,6 +471,9 @@ def get_scan_status() -> dict:
             if not key.startswith("_")
         }
         status["running_companies"] = list(status.get("running_companies", []))
+        status["completed_company_names"] = list(
+            status.get("completed_company_names", [])
+        )
         if status.get("state") == "running":
             status["elapsed_seconds"] = get_elapsed_scan_seconds()
         return status
@@ -487,6 +499,7 @@ def reset_session_scan_state() -> None:
                 "error": "",
                 "total_companies": 0,
                 "completed_companies": 0,
+                "completed_company_names": [],
                 "running_companies": [],
                 "elapsed_seconds": 0.0,
             }

@@ -270,7 +270,7 @@ Change Log
 - Final jobs and Scan Health are assembled on the coordinator thread in deterministic company-list order, independent of worker completion order.
 - Scanner stdout is captured per company and printed later in deterministic order only when debug output is enabled.
 - History persistence, latest scan persistence, stable IDs, triage state handling, and email digest sending remain centralized after all company workers finish.
-- Scan status now tracks total_companies, completed_companies, running_companies, and elapsed_seconds.
+- Scan status now tracks total_companies, completed_companies, completed_company_names, running_companies, and elapsed_seconds. Both company-name lists follow requested company order.
 - Scan Health entries now include duration_seconds and jobs_found.
 - Old persisted Scan Health entries without duration_seconds or jobs_found remain readable.
 - Representative benchmark on Broadcom, Elbit, Qualcomm, Apple, and Rafael:

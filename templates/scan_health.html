@@ -9,6 +9,9 @@
             {% if scan_status.running_companies %}
                 Scanning {{ scan_status.running_companies|join(", ") }}.
             {% endif %}
+            {% if scan_status.completed_company_names %}
+                Completed {{ scan_status.completed_company_names|join(", ") }}.
+            {% endif %}
         </p>
     {% endif %}
 </section>

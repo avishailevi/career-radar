@@ -441,11 +441,61 @@ class ApplicationServiceTest(unittest.TestCase):
 
         self.assertEqual(status["total_companies"], 2)
         self.assertEqual(status["completed_companies"], 0)
+        self.assertEqual(status["completed_company_names"], [])
         self.assertEqual(status["running_companies"], ["Apple", "Broadcom"])
         self.assertGreaterEqual(status["elapsed_seconds"], 0.0)
         final_status = application_service.get_scan_status()
         self.assertEqual(final_status["completed_companies"], 2)
+        self.assertEqual(
+            final_status["completed_company_names"],
+            ["Apple", "Broadcom"],
+        )
         self.assertEqual(final_status["running_companies"], [])
+
+    def test_completed_company_progress_keeps_requested_order(self):
+        companies = [{"name": "Slow"}, {"name": "Fast"}]
+        fast_done = threading.Event()
+        fast_progress_recorded = threading.Event()
+        release_slow = threading.Event()
+        mark_completed = application_service._mark_company_completed
+
+        def scan_company(company):
+            if company["name"] == "Fast":
+                fast_done.set()
+                return []
+
+            release_slow.wait(timeout=2)
+            return []
+
+        def record_completion(index):
+            mark_completed(index)
+            if index == 1:
+                fast_progress_recorded.set()
+
+        with patch("services.application_service.scan_company", side_effect=scan_company):
+            with patch(
+                "services.application_service._mark_company_completed",
+                side_effect=record_completion,
+            ):
+                thread = threading.Thread(
+                    target=lambda: application_service.scan_companies(
+                        companies,
+                        worker_count=2,
+                    )
+                )
+                thread.start()
+                self.assertTrue(fast_done.wait(timeout=2))
+                self.assertTrue(fast_progress_recorded.wait(timeout=2))
+                status = application_service.get_scan_status()
+                self.assertEqual(status["completed_company_names"], ["Fast"])
+                release_slow.set()
+                thread.join(timeout=2)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(
+            application_service.get_scan_status()["completed_company_names"],
+            ["Slow", "Fast"],
+        )
 
     def test_repeated_parallel_runs_are_deterministic(self):
         companies = [{"name": "Apple"}, {"name": "Broadcom"}, {"name": "Marvell"}]

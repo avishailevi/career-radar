@@ -272,6 +272,7 @@ class LocalAppTest(unittest.TestCase):
         status = self.status("running")
         status["total_companies"] = 3
         status["completed_companies"] = 1
+        status["completed_company_names"] = ["Nova"]
         status["running_companies"] = ["Apple", "Broadcom"]
         status["elapsed_seconds"] = 2.5
 
@@ -281,6 +282,7 @@ class LocalAppTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"1/3 completed", response.data)
         self.assertIn(b"Scanning Apple, Broadcom", response.data)
+        self.assertIn(b"Completed Nova", response.data)
 
     def job(self, company, title, url):
         return {
@@ -338,6 +340,7 @@ class LocalAppTest(unittest.TestCase):
             "error": "",
             "total_companies": 0,
             "completed_companies": 0,
+            "completed_company_names": [],
             "running_companies": [],
             "elapsed_seconds": 0.0,
         }
