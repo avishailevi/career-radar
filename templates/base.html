@@ -18,6 +18,14 @@
                 {% if scan_status.started_at %}
                     <span>Started {{ scan_status.started_at }}</span>
                 {% endif %}
+                {% if scan_status.state == "running" and scan_status.total_companies %}
+                    <span>
+                        {{ scan_status.completed_companies }}/{{ scan_status.total_companies }} completed
+                        {% if scan_status.running_companies %}
+                            · Scanning {{ scan_status.running_companies|join(", ") }}
+                        {% endif %}
+                    </span>
+                {% endif %}
                 {% if scan_status.completed_at %}
                     <span>Completed {{ scan_status.completed_at }}</span>
                 {% endif %}

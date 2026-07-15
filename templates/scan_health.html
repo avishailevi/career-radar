@@ -3,6 +3,17 @@
 {% block content %}
 <section class="section-heading">
     <h2>Scan Health</h2>
+    {% if scan_status.state == "running" %}
+        <p class="empty">
+            {{ scan_status.completed_companies }}/{{ scan_status.total_companies }} completed.
+            {% if scan_status.running_companies %}
+                Scanning {{ scan_status.running_companies|join(", ") }}.
+            {% endif %}
+            {% if scan_status.completed_company_names %}
+                Completed {{ scan_status.completed_company_names|join(", ") }}.
+            {% endif %}
+        </p>
+    {% endif %}
 </section>
 
 <section class="summary-grid">
@@ -38,6 +49,8 @@
             <tr>
                 <th>Company</th>
                 <th>Status</th>
+                <th>Jobs</th>
+                <th>Duration</th>
             </tr>
         </thead>
         <tbody>
@@ -45,6 +58,12 @@
                 <tr>
                     <td>{{ result.company }}</td>
                     <td>{{ result.status }}</td>
+                    <td>{{ result.jobs_found|default("") }}</td>
+                    <td>
+                        {% if result.duration_seconds is defined %}
+                            {{ "%.2f"|format(result.duration_seconds) }}s
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
